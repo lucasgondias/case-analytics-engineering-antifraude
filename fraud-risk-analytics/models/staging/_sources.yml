@@ -52,9 +52,9 @@ sources:
 
   - name: raw_v2
     description: >
-      Fontes propostas no contrato v2 (não existem no enunciado). Seeds com dados ILUSTRATIVOS para
-      demonstrar a modelagem: lojista, rótulo antecipado (TC40/SAFE), reembolso, alerta pré-disputa,
-      MED do Pix, desfecho de disputa e regras em shadow mode.
+      Fontes propostas no contrato v2 (não existem no enunciado). Seeds só com colunas, sem linhas:
+      lojista, rótulo antecipado (TC40/SAFE), reembolso, alerta pré-disputa, MED do Pix, desfecho de
+      disputa e regras em shadow mode. A lógica que as consome é provada em models/_unit_tests.yml.
     schema: raw
     loaded_at_field: _ingested_at
     tables:

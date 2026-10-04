@@ -1,6 +1,1 @@
 transaction_id,merchant_id,order_id,country,card_network,card_fingerprint,bin,three_ds_result,issuer_response_code,capture_status,settled_at,payout_term_days,currency,_ingested_at
-tx_1001,m_01,o_01,BR,visa,fp_a1,411111,not_authenticated,00,captured,2026-03-02 03:00:00,2,BRL,2026-03-01 10:00:06
-tx_1002,m_01,o_02,BR,visa,fp_b2,522222,not_attempted,,not_captured,,,BRL,2026-03-01 10:05:05
-tx_1003,m_02,o_03,BR,,,,,,captured,2026-03-01 10:15:02,0,BRL,2026-03-01 10:15:04
-tx_1004,m_02,o_04,BR,mastercard,fp_c3,533333,authenticated,00,captured,2026-03-02 03:00:00,14,BRL,2026-03-01 11:30:05
-tx_1005,m_02,o_04,BR,mastercard,fp_c3,533333,authenticated,00,captured,2026-03-02 03:00:00,14,BRL,2026-03-01 11:30:05

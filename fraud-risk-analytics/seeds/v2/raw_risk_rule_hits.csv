@@ -1,5 +1,1 @@
 evaluation_id,rule_id,rule_version,is_shadow,rule_decision,_ingested_at
-eval_01,rule_new_device_high_ticket,1,true,reject,2026-03-01 10:00:01
-eval_02,rule_high_velocity,3,false,reject,2026-03-01 10:05:01
-eval_02,rule_new_device_high_ticket,1,true,reject,2026-03-01 10:05:01
-eval_04,rule_manual_review_trigger,2,false,review,2026-03-01 11:30:01

@@ -1,4 +1,4 @@
--- Grão: 1 linha por transaction_id. Atributos do contrato v2 (fonte ilustrativa).
+-- Grão: 1 linha por transaction_id. Atributos do contrato v2 (fonte proposta, sem dados no case).
 with source as (
     select * from {{ source('raw_v2', 'raw_payment_enrichment') }}
 )

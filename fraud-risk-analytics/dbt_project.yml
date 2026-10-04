@@ -65,7 +65,7 @@ seeds:
         reason_code: varchar
         cb_amount: varchar
         _ingested_at: timestamp
-    # Fontes propostas no contrato v2. Dados ILUSTRATIVOS (não fazem parte do enunciado).
+    # Fontes propostas no contrato v2: só colunas, sem linhas (não fazem parte do enunciado).
     v2:
       raw_payment_enrichment:
         +column_types:

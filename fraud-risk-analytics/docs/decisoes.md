@@ -17,7 +17,7 @@
 | D11 | **Exposição** por lojista: valor já repassado (D+2/D+14/D+30) e ainda contestável | Ignorar prazo de repasse | O repasse antecipado ao lojista acontece antes de a janela de chargeback (até 120 dias) fechar |
 | D12 | Regras com **versão e shadow mode** (`agg_rule_backtest`) | Avaliar regra só depois de ligada | Backtest de precisão, cobertura, custo em conversão e sobreposição antes de a regra decidir |
 | D13 | **Snapshot "como reportado"** do agregado por safra | Só o valor atual | Responde "por que o número de março mudou desde a reunião" |
-| D14 | Fontes do contrato v2 entram como **seeds ilustrativos** separados (`seeds/v2/`) | Alterar os dados do enunciado | Os 3 arquivos do case ficam idênticos ao enunciado; o v2 só demonstra a modelagem |
+| D14 | Fontes do contrato v2 entram **só como colunas** (`seeds/v2/`, sem linhas); a lógica é provada por unit tests | Inventar linhas de exemplo | Todo número publicado vem do enunciado. Os modelos rodam com a fonte vazia, como em produção antes de o produtor entregar |
 
 ## Premissas (validar com Risco e com os produtores)
 

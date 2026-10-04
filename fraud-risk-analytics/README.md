@@ -31,10 +31,11 @@ Resultado esperado: `PASS=109 WARN=2 ERROR=0` (35 modelos, 67 testes de dado, 8 
 
 ```
 seeds/                  Bronze do enunciado (raw_*, idêntico ao case) + referências (reason codes, códigos do emissor)
-seeds/v2/               fontes propostas no contrato v2, com dados ILUSTRATIVOS: enriquecimento do pagamento
+seeds/v2/               fontes propostas no contrato v2, SÓ COLUNAS (sem linhas): enriquecimento do pagamento
                         (lojista, pedido, país, bandeira, 3DS, código do emissor, liquidação, prazo de repasse),
                         lojistas, TC40/SAFE, reembolsos, alertas pré-disputa, MED do Pix, desfecho de disputa,
-                        regras avaliadas (com shadow mode)
+                        regras avaliadas (com shadow mode). Os modelos que dependem delas rodam e ficam vazios;
+                        a lógica é provada em models/_unit_tests.yml
 models/staging/         tipagem, dedup técnico, normalização (1:1 com a fonte)
 models/intermediate/    decisão de risco vigente, chargeback por tx, suspeitas de duplicidade
 models/marts/           fct_payment_attempts (contract enforced), fct_chargebacks, fct_fraud_labels (label store),

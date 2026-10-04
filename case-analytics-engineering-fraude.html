@@ -367,7 +367,7 @@ body.presenting #slide-hud {
   <div class="tldr-stats">
     <div class="tldr-stat"><div class="num red">7,3% → 30%</div><div class="lbl">CB rate do mesmo dado,<br>4 definições</div></div>
     <div class="tldr-stat"><div class="num red">1 de 4</div><div class="lbl">aprovadas sem<br>avaliação de risco</div></div>
-    <div class="tldr-stat"><div class="num">D+4 x D+14</div><div class="lbl">rótulo do emissor x<br>chargeback (tx_1001)</div></div>
+    <div class="tldr-stat"><div class="num">8</div><div class="lbl">achados nas 5 transações,<br>cada um virou teste ou contrato</div></div>
     <div class="tldr-stat"><div class="num blue">35 · 80</div><div class="lbl">modelos dbt ·<br>testes automatizados</div></div>
     <div class="tldr-stat"><div class="num blue">D+120</div><div class="lbl">chargeback tardio<br>na safra certa</div></div>
   </div>
@@ -471,7 +471,7 @@ body.presenting #slide-hud {
 <table>
 <thead><tr><th>Regra</th><th>Implementação</th><th>Detalhe que o texto não diz</th></tr></thead>
 <tbody>
-<tr><td>Aprovação: tentadas incluem approved, declined e error</td><td><code>approval_rate</code> literal</td><td>Ao lado: aprovação por pedido (no exemplo ilustrativo de pedido, 66,7% no cartão contra 75% por tentativa: a duplicata infla a aprovação) e recusa por origem</td></tr>
+<tr><td>Aprovação: tentadas incluem approved, declined e error</td><td><code>approval_rate</code> literal</td><td>Ao lado: aprovação por pedido, quando o contrato trouxer <code>order_id</code> (no cartão, 75% por tentativa com a duplicata contada como aprovação) e recusa por origem</td></tr>
 <tr><td>CB rate financeiro e por quantidade, por safra</td><td>Razão de somas sobre <code>agg_chargeback_cohort_daily</code></td><td>Quantidade conta <strong>transações distintas</strong>; chargeback em transação recusada vira alerta</td></tr>
 <tr><td>Safra = data da transação</td><td><code>cohort_date</code> de <code>transaction_at</code>, garantido por teste unitário</td><td>O raw não tem <code>transaction_date</code>: depende do fuso. Diária no fato, mensal na camada semântica</td></tr>
 <tr><td>Só aprovadas no denominador</td><td>Filtro <code>is_approved</code></td><td>Pix aprovado entra pelo texto; a variante de cartão fica ao lado</td></tr>
@@ -507,7 +507,7 @@ body.presenting #slide-hud {
 </div>
 <div class="callout">
   <div class="callout-label">No dado do case</div>
-  <p>O lojista ilustrativo da tx_1001 tem 1 liquidada, 1 TC40 e 1 chargeback: <strong>ratio de 200%</strong>, mas <strong>abaixo do piso de 1.500 casos</strong>, então fora do programa. Sem o piso, o painel acusaria um falso alarme.</p>
+  <p>O case não traz lojista nem bandeira, então a tabela das bandeiras fica vazia até o contrato chegar. A lógica (ratio, piso de 1.500 casos, projeção e alerta) está provada em unit test: um lojista com 2 casos e ratio de 50% sai como <strong>abaixo do piso</strong>, sem falso alarme.</p>
 </div>
 </div>
 </section>
@@ -648,8 +648,8 @@ body.presenting #slide-hud {
     <span class="k">else</span> <span class="s">'issuer_or_acquirer'</span>                  <span class="c">-- + issuer_decline_type: soft (retentável) | hard</span>
 <span class="k">end as</span> decline_source</code></pre>
 <div class="callout">
-  <div class="callout-label">Rótulo antecipado (exemplo ilustrativo)</div>
-  <p>Exemplo ilustrativo (dado em <code>seeds/v2</code>): a <code>tx_1001</code> recebe o relatório de fraude do emissor em <strong>D+4</strong>; o chargeback real do case chega em <strong>D+14</strong>. Com o label store, a fraude é conhecida na primeira evidência. A regra em shadow <code>rule_new_device_high_ticket</code> teria barrado essa fraude (R$ 150): é esse tipo de evidência, acumulada em volume, que o backtest usa para decidir se uma regra deve passar a valer.</p>
+  <div class="callout-label">Rótulo antecipado</div>
+  <p>No case, a fraude da <code>tx_1001</code> só é conhecida pelo chargeback, em <strong>D+14</strong>. Quando a adquirente enviar os relatórios de fraude do emissor (TC40/SAFE), eles entram no label store e o rótulo passa a ser a primeira evidência, venha de onde vier. A lógica está coberta por unit test.</p>
 </div>
 </div>
 </section>
@@ -855,7 +855,7 @@ changed = (
 <!-- 15 PROTOTIPO -->
 <section id="prototipo">
 <h2><span class="sec-num">15</span>Protótipo <span class="accent">executável</span></h2>
-<p class="lead">Repositório público com um script que roda tudo (<code>run_all.ps1</code> / <code>run_all.sh</code>). Os dados do enunciado ficam idênticos; as fontes do contrato v2 são ilustrativas e separadas.</p>
+<p class="lead">Repositório público com um script que roda tudo (<code>run_all.ps1</code> / <code>run_all.sh</code>). Todo número vem dos dados do enunciado, que ficam idênticos. As fontes que o case não traz existem como contrato (colunas e tipos, sem linhas) e a lógica delas é provada por unit tests.</p>
 <div class="section">
 <div class="terminal"><span class="dim">$ dbt build</span>
 <span class="ok">PASS</span> fct_payment_attempts::incremental_picks_out_of_order_events_and_duplicate_neighbors

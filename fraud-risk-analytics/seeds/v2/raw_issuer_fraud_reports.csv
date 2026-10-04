@@ -1,2 +1,1 @@
 report_id,transaction_id,card_network,reported_at,fraud_type,_ingested_at
-tc40_7001,tx_1001,visa,2026-03-05 08:00:00,card_not_present,2026-03-05 09:00:00
