@@ -16,7 +16,7 @@ dbt seed                                   # Bronze: dados do case
 dbt build --exclude resource_type:seed     # modelos + testes de dado + unit tests
 python scripts/simulate_late_chargeback.py # chargeback D+120 reabre só a safra afetada
 sqlfluff lint models tests/singular
-python -m pytest spark/tests               # PySpark: paridade com o dbt (requer Java 8+)
+python -m pytest spark/tests               # PySpark: paridade com o dbt e variáveis de velocidade (requer Java 8+)
 python spark/run_pipeline.py               # PySpark: carga + chargeback D+120 incremental
 ```
 
@@ -49,20 +49,50 @@ tests/singular/         erros silenciosos + reconciliação Bronze ↔ Gold
 contracts/              data contracts ODCS v3 com os produtores (adquirente, motor de risco)
 ../.github/workflows/   CI na raiz do repositório: lint → build (Slim CI) → paridade PySpark
 docs/decisoes.md        decisões, premissas e perguntas em aberto para Risco
-spark/                  mesma lógica em PySpark: transformações puras + I/O Delta + teste de paridade
+spark/                  PySpark: núcleo em paridade com o dbt, variáveis de velocidade por cliente, I/O Delta
+ingestion/              Lakeflow Declarative Pipelines (SQL): Bronze com expectations do contrato e quarentena
+resources/              Lakeflow Jobs e pipeline, declarados como Databricks Asset Bundle
+databricks.yml          bundle: variáveis (catálogo, warehouse, Kafka, volume de arquivos) e targets dev/prod
 ```
 
-## dbt e PySpark
+## Divisão entre Lakeflow, dbt e PySpark
 
-dbt organiza a transformação (testes, contratos, CI, linhagem, camada semântica) e Spark executa.
-A regra de negócio está nas duas implementações e `spark/tests/test_parity.py` compara linha a linha
-`fct_payment_attempts` e `agg_chargeback_cohort_daily` do PySpark com a saída do dbt.
+| Parte | Ferramenta | Arquivos |
+|---|---|---|
+| Ingestão para o Bronze | Lakeflow Declarative Pipelines (SQL) | `ingestion/` |
+| Silver, Gold, métricas e testes | dbt | `models/`, `tests/`, `snapshots/` |
+| Variáveis de velocidade por cliente | PySpark | `spark/fraud_risk_spark/transformations.py`, `spark/run_velocity_features.py` |
+| Reprocessamento pesado de safras | dbt e PySpark, com teste de paridade | `spark/` |
+| Orquestração | Lakeflow Jobs | `resources/jobs.yml` |
+
+`spark/tests/test_parity.py` compara linha a linha `fct_payment_attempts` e `agg_chargeback_cohort_daily`
+do PySpark com a saída do dbt e testa as variáveis de velocidade com os dados do case.
 
 - `spark/fraud_risk_spark/transformations.py`: funções puras de DataFrame, testáveis em memória. Cobre o núcleo
   (staging, decisão de risco, duplicidade, fato de tentativas, agregado por safra e incremental com sobreposição
   e vizinhos). Os modelos do contrato v2 existem só no dbt.
 - `spark/fraud_risk_spark/io_delta.py`: escrita em produção (Delta `MERGE` e `replaceWhere`). Não roda
   no protótipo local, porque Delta no Windows exige Hadoop nativo; a lógica que ela grava é a testada.
+
+## Databricks: ingestão e orquestração
+
+Definições para Databricks, não executadas no protótipo local. O bundle é validado contra o JSON Schema
+oficial do Databricks CLI (`databricks bundle schema`); `databricks bundle validate` e `deploy` exigem workspace.
+
+- **Ingestão** (`ingestion/`): uma tabela de streaming por fonte. Eventos de pagamento e do motor de risco
+  vêm do Kafka; arquivos de chargeback das adquirentes, do Auto Loader. As expectations aplicam o contrato
+  de `contracts/`; o registro que viola vai para a tabela de quarentena da fonte, e nada é perdido. Duplicidade
+  e transação sem avaliação não violam o contrato: entram no Bronze e são sinalizadas no dbt.
+- **Jobs** (`resources/jobs.yml`):
+
+| Job | Gatilho | Tarefas |
+|---|---|---|
+| `fraud-risk-intraday` | a cada 15 minutos | ingestão, aprovação (`+agg_approval_daily`), variáveis de velocidade |
+| `fraud-risk-chargeback` | chegada de arquivo de chargeback | ingestão, safras afetadas (`stg_acquirer__chargebacks+`) |
+| `fraud-risk-daily` | 06:00 | ingestão, atraso das fontes (`dbt source freshness`), build completo incremental |
+| `fraud-risk-weekly-full-refresh` | domingo 03:00 | recálculo completo (`--full-refresh`) |
+
+No Databricks, o Bronze vem do pipeline; o dbt carrega como seed só as referências e os contratos v2.
 
 ## Correções da revisão especialista
 

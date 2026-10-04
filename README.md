@@ -5,7 +5,7 @@ motor de fraude, a perda por chargeback por safra e o impacto das regras na taxa
 
 | Caminho | Conteúdo |
 |---|---|
-| [`fraud-risk-analytics/`](fraud-risk-analytics/) | Protótipo executável: dbt + DuckDB, implementação PySpark com teste de paridade, data contracts e documentação |
+| [`fraud-risk-analytics/`](fraud-risk-analytics/) | Protótipo executável: dbt + DuckDB, PySpark com teste de paridade e variáveis de velocidade, data contracts, ingestão no Lakeflow e jobs (Databricks Asset Bundle) |
 | [`fraud-risk-analytics/docs/decisoes.md`](fraud-risk-analytics/docs/decisoes.md) | Decisões de arquitetura e modelagem, com alternativas consideradas |
 | [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | CI: lint SQL, dbt build (modelos, testes de dado, unit tests) e paridade PySpark |
 
@@ -30,7 +30,8 @@ chargeback tardio, o lint SQL e os testes PySpark. Resultado esperado:
   avaliação de risco e duplicata de `tx_1004`.
 - Simulação: chargeback de D+120 leva o CB rate da safra 01/03 (cartão) de 17,65% para 58,82%,
   reprocessando só essa safra.
-- PySpark: `5 passed`, fato e agregado idênticos aos do dbt e incremental com sobreposição testado.
+- PySpark: `6 passed`. Fato e agregado idênticos aos do dbt, incremental com sobreposição e variáveis de
+  velocidade por cliente.
 
 Detalhes do protótipo em [`fraud-risk-analytics/README.md`](fraud-risk-analytics/README.md) e decisões em
 [`fraud-risk-analytics/docs/decisoes.md`](fraud-risk-analytics/docs/decisoes.md).

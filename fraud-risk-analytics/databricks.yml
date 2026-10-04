@@ -1,0 +1,29 @@
+# Databricks Asset Bundle: pipeline de ingestão (Lakeflow Declarative Pipelines) e jobs (Lakeflow Jobs).
+# Definição para Databricks; o protótipo local roda o mesmo projeto dbt sobre DuckDB.
+# Uso: databricks bundle validate | deploy -t <target>
+bundle:
+  name: fraud-risk-analytics
+
+include:
+  - resources/*.yml
+
+variables:
+  catalog:
+    description: Catálogo do Unity Catalog com os schemas raw, staging, marts e features.
+    default: risk
+  warehouse_id:
+    description: SQL warehouse usado pelas tarefas dbt.
+  kafka_bootstrap_servers:
+    description: Servidores do Kafka com os tópicos de pagamentos e do motor de risco.
+  landing_path:
+    description: Volume do Unity Catalog onde as adquirentes depositam os arquivos.
+    default: /Volumes/risk/landing/acquirers
+  alert_email:
+    description: Destinatário dos alertas de falha dos jobs.
+
+targets:
+  dev:
+    mode: development
+    default: true
+  prod:
+    mode: production

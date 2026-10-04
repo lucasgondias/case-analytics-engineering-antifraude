@@ -1,0 +1,19 @@
+# Lakeflow Declarative Pipelines: Bronze das fontes do case, com expectations do contrato e quarentena.
+resources:
+  pipelines:
+    fraud_risk_ingestion:
+      name: fraud-risk-ingestion
+      catalog: ${var.catalog}
+      schema: raw
+      serverless: true
+      continuous: false
+      configuration:
+        kafka_bootstrap_servers: ${var.kafka_bootstrap_servers}
+        landing_path: ${var.landing_path}
+      libraries:
+        - file:
+            path: ../ingestion/raw_transactions.sql
+        - file:
+            path: ../ingestion/raw_risk_evaluations.sql
+        - file:
+            path: ../ingestion/raw_chargebacks.sql

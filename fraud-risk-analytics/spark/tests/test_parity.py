@@ -155,3 +155,19 @@ def test_incremental_picks_out_of_order_events_and_duplicate_neighbors(spark):
     wm = spark.sql("select timestamp'2026-03-01 12:00:00' as wm").first().wm
     ids = T.affected_transaction_ids(tx, empty, empty, T.Watermarks(wm, wm, wm))
     assert sorted(r.transaction_id for r in ids.collect()) == ["tx_dup_old", "tx_late", "tx_new"]
+
+
+def test_velocity_features_by_user(spark):
+    raw = T.read_raw_csv(spark, str(P.SEEDS_DIR / "raw_transactions.csv"))
+    features = T.velocity_features(T.stg_transactions(raw))
+    rows = {
+        r.transaction_id: (r.user_attempts_10m, r.user_attempts_24h, r.user_amount_24h)
+        for r in features.collect()
+    }
+    assert rows == {
+        "tx_1001": (0, 0, Decimal("0.00")),
+        "tx_1002": (0, 0, Decimal("0.00")),
+        "tx_1003": (0, 1, Decimal("150.00")),  # tx_1001 15 min antes: fora de 10 min, dentro de 24 h
+        "tx_1004": (1, 1, Decimal("350.00")),  # tx_1005 no mesmo segundo conta nas duas janelas
+        "tx_1005": (1, 1, Decimal("350.00")),
+    }

@@ -1,0 +1,146 @@
+# Lakeflow Jobs: as quatro frequências de atualização do desenho.
+#   intraday   a cada 15 min: ingestão, aprovação (prazo de 1 hora) e variáveis de velocidade (PySpark)
+#   chargeback na chegada de arquivo da adquirente: ingestão e reprocessamento das safras afetadas
+#   diario     06:00: atraso das fontes e build completo (incremental), pronto até 07:00
+#   semanal    domingo 03:00: recálculo completo (--full-refresh)
+# Seeds no Databricks: só as referências e os contratos v2 (sem linhas); o Bronze vem do pipeline.
+resources:
+  jobs:
+    fraud_risk_intraday:
+      name: fraud-risk-intraday
+      schedule:
+        quartz_cron_expression: "0 0/15 * * * ?"
+        timezone_id: America/Sao_Paulo
+      email_notifications:
+        on_failure:
+          - ${var.alert_email}
+      environments:
+        - environment_key: dbt
+          spec:
+            client: "1"
+            dependencies:
+              - dbt-databricks>=1.10,<2.0
+        - environment_key: pyspark
+          spec:
+            client: "1"
+      tasks:
+        - task_key: ingestao
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.fraud_risk_ingestion.id}
+        - task_key: aprovacao
+          depends_on:
+            - task_key: ingestao
+          environment_key: dbt
+          dbt_task:
+            project_directory: ../
+            warehouse_id: ${var.warehouse_id}
+            catalog: ${var.catalog}
+            schema: analytics
+            commands:
+              - dbt build --select +agg_approval_daily --exclude resource_type:seed
+        - task_key: variaveis_de_velocidade
+          depends_on:
+            - task_key: ingestao
+          environment_key: pyspark
+          spark_python_task:
+            python_file: ../spark/run_velocity_features.py
+            parameters:
+              - ${var.catalog}
+
+    fraud_risk_chargeback:
+      name: fraud-risk-chargeback
+      trigger:
+        pause_status: UNPAUSED
+        file_arrival:
+          url: ${var.landing_path}/chargebacks/
+      email_notifications:
+        on_failure:
+          - ${var.alert_email}
+      environments:
+        - environment_key: dbt
+          spec:
+            client: "1"
+            dependencies:
+              - dbt-databricks>=1.10,<2.0
+      tasks:
+        - task_key: ingestao
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.fraud_risk_ingestion.id}
+        - task_key: safras_afetadas
+          depends_on:
+            - task_key: ingestao
+          environment_key: dbt
+          dbt_task:
+            project_directory: ../
+            warehouse_id: ${var.warehouse_id}
+            catalog: ${var.catalog}
+            schema: analytics
+            commands:
+              - dbt build --select stg_acquirer__chargebacks+ --exclude resource_type:seed
+
+    fraud_risk_daily:
+      name: fraud-risk-daily
+      schedule:
+        quartz_cron_expression: "0 0 6 * * ?"
+        timezone_id: America/Sao_Paulo
+      email_notifications:
+        on_failure:
+          - ${var.alert_email}
+      environments:
+        - environment_key: dbt
+          spec:
+            client: "1"
+            dependencies:
+              - dbt-databricks>=1.10,<2.0
+      tasks:
+        - task_key: ingestao
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.fraud_risk_ingestion.id}
+        - task_key: atraso_das_fontes
+          depends_on:
+            - task_key: ingestao
+          environment_key: dbt
+          dbt_task:
+            project_directory: ../
+            warehouse_id: ${var.warehouse_id}
+            catalog: ${var.catalog}
+            schema: analytics
+            commands:
+              - dbt source freshness
+        - task_key: build
+          depends_on:
+            - task_key: ingestao
+          environment_key: dbt
+          dbt_task:
+            project_directory: ../
+            warehouse_id: ${var.warehouse_id}
+            catalog: ${var.catalog}
+            schema: analytics
+            commands:
+              - dbt seed --select ref_chargeback_reason_codes ref_issuer_response_codes path:seeds/v2
+              - dbt build --exclude resource_type:seed
+
+    fraud_risk_weekly_full_refresh:
+      name: fraud-risk-weekly-full-refresh
+      schedule:
+        quartz_cron_expression: "0 0 3 ? * SUN"
+        timezone_id: America/Sao_Paulo
+      email_notifications:
+        on_failure:
+          - ${var.alert_email}
+      environments:
+        - environment_key: dbt
+          spec:
+            client: "1"
+            dependencies:
+              - dbt-databricks>=1.10,<2.0
+      tasks:
+        - task_key: recalculo_completo
+          environment_key: dbt
+          dbt_task:
+            project_directory: ../
+            warehouse_id: ${var.warehouse_id}
+            catalog: ${var.catalog}
+            schema: analytics
+            commands:
+              - dbt build --full-refresh --exclude resource_type:seed

@@ -383,3 +383,29 @@ def merge_by_key(current: DataFrame, changes: DataFrame, keys: list[str]) -> Dat
 
 def affected_cohorts(changed_attempts: DataFrame) -> list[date]:
     return [r.cohort_date for r in changed_attempts.select("cohort_date").distinct().collect()]
+
+
+# --------------------------------------------------------------------------------------
+# Variáveis de velocidade (PySpark puro: janelas de tempo sobre grande volume de eventos)
+# --------------------------------------------------------------------------------------
+VELOCITY_WINDOWS_SECONDS = {"10m": 600, "24h": 86_400}
+
+
+def velocity_features(transactions: DataFrame) -> DataFrame:
+    """Tentativas e valor do mesmo cliente nas janelas anteriores a cada transação.
+
+    Grão: 1 linha por transaction_id. A janela inclui tentativas do mesmo segundo e exclui a
+    própria transação. Uso: backtest de regras e análise do motor de risco.
+    """
+    out = transactions.withColumn("_ts", F.col("transaction_at").cast("long"))
+    feature_columns = []
+    for label, seconds in VELOCITY_WINDOWS_SECONDS.items():
+        window = Window.partitionBy("user_id").orderBy("_ts").rangeBetween(-seconds, 0)
+        out = out.withColumns(
+            {
+                f"user_attempts_{label}": F.count(F.lit(1)).over(window) - 1,
+                f"user_amount_{label}": F.sum("amount").over(window) - F.col("amount"),
+            }
+        )
+        feature_columns += [f"user_attempts_{label}", f"user_amount_{label}"]
+    return out.select("transaction_id", "user_id", "transaction_at", *feature_columns)

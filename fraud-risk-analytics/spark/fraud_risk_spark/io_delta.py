@@ -39,3 +39,20 @@ def replace_cohorts(cohort_aggregate: DataFrame, table: str, cohorts: Iterable[d
         .option("replaceWhere", predicate)
         .saveAsTable(table)
     )
+
+
+def merge_velocity_features(spark, features: DataFrame, table: str) -> None:
+    """MERGE por transaction_id; cria a tabela na primeira execução."""
+    if not spark.catalog.tableExists(table):
+        features.write.format("delta").saveAsTable(table)
+        return
+    from delta.tables import DeltaTable
+
+    (
+        DeltaTable.forName(spark, table)
+        .alias("t")
+        .merge(features.alias("s"), "t.transaction_id = s.transaction_id")
+        .whenMatchedUpdateAll()
+        .whenNotMatchedInsertAll()
+        .execute()
+    )

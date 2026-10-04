@@ -18,12 +18,15 @@
 | D12 | Regras com **versão e shadow mode** (`agg_rule_backtest`) | Avaliar regra só depois de ligada | Backtest de precisão, cobertura, custo em conversão e sobreposição antes de a regra decidir |
 | D13 | **Snapshot "como reportado"** do agregado por safra | Só o valor atual | Responde "por que o número de março mudou desde a reunião" |
 | D14 | Fontes do contrato v2 entram **só como colunas** (`seeds/v2/`, sem linhas); a lógica é provada por unit tests | Inventar linhas de exemplo | Todo número publicado vem do enunciado. Os modelos rodam com a fonte vazia, como em produção antes de o produtor entregar |
+| D15 | Ingestão no **Lakeflow Declarative Pipelines** (SQL), com expectations do contrato e quarentena por fonte | Jobs de ingestão escritos em PySpark | Auto Loader e leitura do Kafka com checkpoint, nova tentativa e métricas de qualidade gerenciados pela plataforma, com menos código para manter |
+| D16 | PySpark só onde SQL não atende bem: **variáveis de velocidade** e reprocessamento pesado de safras | PySpark em toda a cadeia / só dbt | Janelas de tempo por cliente sobre grande volume. O restante fica em dbt, revisável pelo time de Risco |
+| D17 | Orquestração no **Lakeflow Jobs** com quatro gatilhos: 15 min, chegada de arquivo de chargeback, diário e semanal | Airflow | Toda a execução está no Databricks; o gatilho por chegada de arquivo atende ao reprocessamento a cada chargeback |
 
 ## Premissas (validar com Risco e com os produtores)
 
 - Timestamps no fuso do país da operação. A safra é a data local. O contrato v2 exige offset.
 - Moeda por transação (`currency`); comparações entre países só após conversão pela taxa da data.
-- Pix não tem chargeback: fica fora do denominador do CB rate de cartão, mas tem perda própria via MED 2.0 (prazo do pagador de até 80 dias desde set/2026).
+- Pix não tem chargeback: fica fora do denominador do CB rate de cartão, mas tem perda própria via MED (Mecanismo Especial de Devolução, do Banco Central).
 - O status `error` entra no denominador da aprovação porque o contrato manda. A aprovação por pedido é a métrica auxiliar.
 - Limites das bandeiras parametrizados em `dbt_project.yml` (`network_programs`): VAMP lojista 1,5% na América Latina e Caribe, com piso de 1.500 casos de fraude reportada + disputas no mês (Visa, VAMP fact sheet 2025; o Brasil terá programa próprio, ainda não anunciado); Mastercard ECM 1,5% com 100+ chargebacks; EFM 50 bps.
 
