@@ -420,7 +420,7 @@ body.presenting #slide-hud {
   <div class="etapa-card-header"><span class="etapa-card-num">1</span><span class="etapa-card-title">Evento nasce na fonte</span></div>
   <dl>
     <dt>Onde</dt><dd>Sistemas operacionais: checkout/gateway (tentativa, pedido, liquidação), motor de risco (avaliação, regras, shadow), parceiro antifraude (revisão), adquirentes (chargeback, TC40/SAFE, alertas, desfecho de disputa), PSP Pix (MED) e ledger (saldo, reembolso).</dd>
-    <dt>Formato</dt><dd>Evento em Kafka; webhook ou arquivo diário das adquirentes.</dd>
+    <dt>Formato</dt><dd>Evento em fila/stream (ex.: Kafka); webhook ou arquivo diário das adquirentes.</dd>
     <dt>Contrato</dt><dd><code>contracts/*.odcs.yaml</code>: schema, tipos, enums, fuso com offset, moeda, SLA, dono. Versionado e revisado pelo produtor (CODEOWNERS).</dd>
   </dl>
 </div>
