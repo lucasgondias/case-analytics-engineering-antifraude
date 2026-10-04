@@ -4,7 +4,7 @@
 
 | # | Decisão | Alternativa descartada | Por quê |
 |---|---|---|---|
-| D1 | Flags de qualidade **sinalizam** e nunca filtram linhas | Remover duplicatas e transações sem avaliação no staging | Remover em silêncio é o próprio "erro silencioso". A métrica oficial segue o contrato e as flags permitem auditar |
+| D1 | Flags de qualidade **sinalizam** e nunca filtram linhas | Remover duplicatas e transações sem avaliação no staging | Remover sem registro esconde a falha que o enunciado descreve. A métrica oficial segue o contrato e as flags permitem auditar |
 | D2 | Incremental por **chaves afetadas**, com watermark por fonte **e sobreposição de 6h** | Reprocessar sempre os últimos 90 dias / watermark puro | Janela fixa perde chargeback de D+91 a D+120. Watermark puro (`> max`) perde evento ingerido fora de ordem. A sobreposição é idempotente porque o MERGE é por chave |
 | D3 | Duplicata nova **reabre a transação vizinha** do mesmo usuário | Reabrir só a transação com evento novo | Sem isso a flag de duplicidade da transação antiga fica desatualizada |
 | D4 | Agregados guardam só **numeradores e denominadores** e só o que é **função do dado** | Gravar taxas e idade de safra | Média de taxas está errada quando o volume varia. Idade e maturidade dependem de "hoje" e congelariam nas safras não reprocessadas: calculadas na leitura (`rpt_chargeback_cohort_maturity`) |

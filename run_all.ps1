@@ -1,7 +1,7 @@
-﻿# Roda o case inteiro no Windows: ambiente, dbt, testes, simulação, PySpark e abre as páginas.
+﻿# Roda o case inteiro no Windows: ambiente, dbt, testes, simulação e PySpark.
 # Uso (PowerShell, na raiz do repositório):  .\run_all.ps1
-# Opções: -SkipSpark (pula PySpark, que exige Java 8+)  -NoOpen (não abre o navegador)
-param([switch]$SkipSpark, [switch]$NoOpen)
+# Opção: -SkipSpark (pula PySpark, que exige Java 8+)
+param([switch]$SkipSpark)
 $ErrorActionPreference = "Stop"
 $root = $PSScriptRoot
 $proj = Join-Path $root "fraud-risk-analytics"
@@ -50,7 +50,3 @@ try {
 }
 
 Step "Tudo certo"
-if (-not $NoOpen) {
-    Start-Process (Join-Path $root "case-analytics-engineering-fraude.html")
-    Start-Process (Join-Path $root "guia-conceitos-fraude-e-risco.html")
-}

@@ -20,4 +20,4 @@ rm -f fraud_risk.duckdb
 if [ "${SKIP_SPARK:-0}" != "1" ] && command -v java >/dev/null; then
   "$py" -m pytest spark/tests -q -p no:cacheprovider
 fi
-echo "Tudo certo. Abra case-analytics-engineering-fraude.html e guia-conceitos-fraude-e-risco.html."
+echo "Tudo certo."
