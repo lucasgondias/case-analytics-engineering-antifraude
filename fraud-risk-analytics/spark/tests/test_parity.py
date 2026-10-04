@@ -107,12 +107,15 @@ def test_late_chargeback_reopens_only_affected_cohort(spark, initial):
     )
     assert [c.isoformat() for c in cohorts] == ["2026-03-01"]
 
-    changed = new_attempts.where("_updated_at > timestamp'2026-10-03 06:00:00'").collect()
-    assert [r.transaction_id for r in changed] == ["tx_1004"], "só a tx afetada é reprocessada"
+    # Comparação em Python (não literal SQL): independente do fuso da máquina e da sessão Spark.
+    initial_updated_at = attempts.agg({"_updated_at": "max"}).first()[0]
+    changed = [r.transaction_id for r in new_attempts.collect() if r._updated_at > initial_updated_at]
+    assert changed == ["tx_1004"], "só a tx afetada é reprocessada"
 
     card = new_cohort.where("payment_method = 'credit_card'").first()
     assert card.chargeback_amount == Decimal("500.00")  # 150 (D+14) + 350 (D+120)
     assert card.approved_amount == Decimal("850.00")
 
-    pix = new_cohort.where("payment_method = 'pix'").first()
-    assert str(pix._updated_at) == "2026-10-03 06:00:00", "partição não afetada não é reescrita"
+    pix_before = cohort.where("payment_method = 'pix'").first()
+    pix_after = new_cohort.where("payment_method = 'pix'").first()
+    assert pix_after._updated_at == pix_before._updated_at, "partição não afetada não é reescrita"
