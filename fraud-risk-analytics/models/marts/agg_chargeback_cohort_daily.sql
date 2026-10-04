@@ -9,6 +9,7 @@
 -- aditivos: taxa é calculada na camada semântica (razão de somas, nunca média de taxas).
 --
 -- Incremental: recalcula apenas as safras tocadas por linhas atualizadas no fato.
+-- Só guarda o que é função do dado (nunca da data de execução), senão o incremental congela valor.
 -- Chargeback de 2026-03-15 para tx de 2026-03-01 reabre a safra 2026-03-01.
 
 with attempts as (
@@ -43,11 +44,13 @@ select
     coalesce(sum(amount) filter (where is_approved and not is_duplicate_candidate), 0)
         as approved_amount_dedup,
 
-    -- maturidade: safra com menos de N dias ainda vai receber chargeback
-    datediff('day', cohort_date, date '{{ var("as_of_date") }}') as cohort_age_days,
-    datediff('day', cohort_date, date '{{ var("as_of_date") }}')
-    >= {{ var('maturity_window_days') }} as is_mature,
+    -- rótulo de fraude (qualquer evidência: TC40/SAFE, chargeback, reembolso, MED)
+    count(*) filter (where is_approved and is_fraud_labeled) as fraud_labeled_count,
+    coalesce(sum(amount) filter (where is_approved and is_fraud_labeled), 0) as fraud_labeled_amount,
+    coalesce(sum(fraud_refund_amount) filter (where is_approved), 0) as fraud_refund_amount,
 
+    -- B2: idade e maturidade NÃO são gravadas aqui (dependem de "hoje" e ficariam congeladas
+    -- nas safras não reprocessadas). Calculadas na leitura em rpt_chargeback_cohort_maturity.
     max(_updated_at) as _updated_at
 from attempts
 group by cohort_date, payment_method

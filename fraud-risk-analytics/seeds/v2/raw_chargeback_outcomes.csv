@@ -1,0 +1,2 @@
+chargeback_id,dispute_stage,outcome,resolved_at,recovered_amount,recovered_from_merchant_amount,_ingested_at
+cb_901,first_chargeback,lost,2026-03-25 10:00:00,0.00,150.00,2026-03-25 10:00:05

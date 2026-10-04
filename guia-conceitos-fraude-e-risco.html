@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Guia de Conceitos · Fraude e Risco</title>
-<meta name="description" content="Conceitos de pagamentos, chargeback, motor de risco, safras e engenharia de dados usados no case de Analytics Engineering de prevenção a fraudes.">
+<title>Guia de Conceitos</title>
+<meta name="description" content="Pagamento com cartão, chargeback, reason codes, Pix/MED, motor de risco, safras e termos de dados.">
 <style>
 
 @import url('https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
@@ -194,6 +194,67 @@ pre .w { color: #ffd479; }
 .terminal .dim { color: #8a97b8; }
 
 /* GLOSSARIO */
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+
+/* FOOTER */
+.footer { max-width: 1200px; margin: 4rem auto 0; padding: 3rem 2rem 2rem; border-top: 1px solid var(--border); text-align: center; color: var(--text-muted); font-size: 0.86rem; }
+.footer .footer-brand { display: inline-flex; align-items: center; gap: 0.55rem; margin-bottom: 1rem; }
+.footer .footer-brand .brand-dot { width: 18px; height: 18px; }
+.footer .footer-brand .brand-name { font-size: 1.1rem; }
+.footer p { margin: 0.4rem 0; }
+
+@media (max-width: 860px) {
+  .container { padding: 0 1rem 3rem; }
+  .topbar { padding: 0.9rem 1rem; }
+  .topbar-nav a:not(.btn-primary) { display: none; }
+  .hero { padding: 3.5rem 1rem 2.5rem; }
+  h2 { font-size: 1.6rem; margin: 3rem 0 1rem; }
+  .section, .tldr, .toc { padding: 1.4rem; }
+  .toc ol { columns: 1; }
+  .two-col { grid-template-columns: 1fr; }
+  th, td { padding: 9px 10px; }
+}
+@media print {
+  .topbar { position: static; }
+  h2 { break-before: page; margin-top: 1rem; }
+  .section, .card, .etapa-item, pre, table { break-inside: avoid; }
+}
+
+/* MODO APRESENTACAO */
+#slide-hud { display: none; }
+body.presenting { font-size: 17px; overflow: hidden; }
+body.presenting .topbar, body.presenting .toc, body.presenting .footer { display: none; }
+body.presenting .slide { display: none; }
+body.presenting .slide.active {
+  display: block; position: fixed; inset: 0; z-index: 200; overflow-y: auto;
+  background: var(--bg); padding: 3.5rem max(5vw, 1.5rem) 6rem; margin: 0; border: none; border-radius: 0; box-shadow: none;
+}
+body.presenting .slide.active > * { width: 100%; max-width: 1200px; margin-left: auto; margin-right: auto; }
+body.presenting .hero.slide.active { display: flex; align-items: center; }
+body.presenting .hero.slide.active .hero-inner { width: 100%; }
+body.presenting .tldr.slide.active::before { display: none; }
+body.presenting .tldr.slide.active { display: flex; flex-direction: column; justify-content: center; }
+body.presenting h2 { margin-top: 0; }
+body.presenting #slide-hud {
+  display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 300; align-items: center; gap: 1rem;
+  padding: 0.7rem max(5vw, 1.5rem); background: rgba(255,255,255,0.94); border-top: 1px solid var(--border);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); font-size: 0.82rem; color: var(--text-muted);
+}
+#slide-hud .hud-brand { display: flex; align-items: center; gap: 0.45rem; font-family: var(--font-display); font-weight: 800; color: var(--text); }
+#slide-hud .hud-brand .brand-dot { width: 14px; height: 14px; }
+#slide-hud .hud-progress { flex: 1; height: 4px; background: var(--bg-alt); border-radius: var(--pill); overflow: hidden; }
+#slide-hud .hud-progress span { display: block; height: 100%; width: 0; background: var(--primary); transition: width 0.25s; }
+#slide-hud .hud-count { font-family: var(--font-display); font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; min-width: 4.5rem; text-align: right; }
+#slide-hud button {
+  border: 1px solid var(--border); background: white; color: var(--text); border-radius: var(--pill);
+  padding: 0.35rem 0.85rem; font: inherit; font-weight: 600; cursor: pointer;
+}
+#slide-hud button:hover { border-color: var(--primary); color: var(--primary); }
+#slide-hud .hud-hint { color: var(--text-light); }
+@media (max-width: 860px) { #slide-hud .hud-hint { display: none; } }
+@media print { #slide-hud { display: none !important; } }
+
+/* GLOSSARIO */
 @media (max-width: 480px) { .topbar .brand-team, .topbar .brand-divider { display: none; } }
 .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
 
@@ -233,6 +294,24 @@ pre .w { color: #ffd479; }
   .glossario dt { padding-bottom: 0.3rem; }
   .glossario dd { padding-top: 0; border-top: none; }
 }
+
+/* ETAPA-CARD (passos com dl/dt/dd) */
+.etapa-grid { display: grid; grid-template-columns: 1fr; gap: 1rem; margin: 1.5rem 0; }
+.etapa-card { border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem 1.75rem; background: var(--bg); box-shadow: var(--shadow-xs); }
+.etapa-card-header { display: flex; align-items: baseline; gap: 1rem; margin-bottom: 1rem; padding-bottom: 0.85rem; border-bottom: 1px solid var(--border); }
+.etapa-card-num { font-family: var(--font-display); font-weight: 900; font-size: 1.4rem; color: var(--primary); letter-spacing: -1px; min-width: 38px; }
+.etapa-card-title { font-family: var(--font-display); font-weight: 700; font-size: 1.15rem; color: var(--text); letter-spacing: -0.3px; }
+.etapa-card dl { display: grid; grid-template-columns: 150px 1fr; gap: 0 1.75rem; font-size: 0.93rem; }
+.etapa-card dt { font-family: var(--font-display); font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); padding: 0.9rem 0; border-top: 1px solid var(--border); }
+.etapa-card dd { color: var(--text); line-height: 1.7; padding: 0.9rem 0; border-top: 1px solid var(--border); }
+.etapa-card dt:first-of-type, .etapa-card dd:first-of-type { border-top: none; padding-top: 0; }
+.etapa-item-num { min-width: 64px; }
+@media (max-width: 860px) {
+  .etapa-card dl { grid-template-columns: 1fr; }
+  .etapa-card dt { padding-bottom: 0.2rem; }
+  .etapa-card dd { padding-top: 0; border-top: none; }
+}
+
 </style>
 </head>
 <body>
@@ -415,7 +494,7 @@ pre .w { color: #ffd479; }
 
 <div class="callout red">
   <div class="callout-label">Além do valor contestado</div>
-  <p>Cada chargeback costuma vir com <strong>tarifa</strong> da adquirente, ganhe ou perca a disputa. E as bandeiras têm <strong>programas de monitoramento</strong>: quando a taxa de chargeback de um estabelecimento passa dos limites definidos por elas (na casa de 1% das transações, variando por bandeira e programa), vêm multas, exigências de plano de ação e, no limite, o descredenciamento. Isso faz da taxa de chargeback uma métrica de sobrevivência do negócio, e não só de perda.</p>
+  <p>Cada chargeback costuma vir com <strong>tarifa</strong> da adquirente, ganhe ou perca a disputa. E as bandeiras têm <strong>programas de monitoramento</strong> por lojista. Na Visa, o <strong>VAMP</strong> soma fraude reportada pelo emissor (TC40) e disputas, sobre as transações liquidadas do mês: o limite do lojista é <strong>1,5%</strong> desde abril de 2026 (América Latina incluída), com cobrança por disputa acima do limite. Na Mastercard, o <strong>ECM</strong> começa em 1,5% e 100 chargebacks no mês. Acima disso vêm multas, plano de ação e, no limite, o descredenciamento. Isso faz da taxa de chargeback uma métrica de sobrevivência do negócio, e não só de perda.</p>
 </div>
 </section>
 
@@ -448,9 +527,10 @@ pre .w { color: #ffd479; }
 <section id="pix">
 <h2><span class="sec-num">04</span>E o Pix? <span class="accent">MED não é chargeback</span></h2>
 <div class="section">
-<p>Pix não passa por bandeira nem por emissor de cartão, então <strong>não tem chargeback</strong>. Em caso de fraude ou golpe, existe o <strong>MED (Mecanismo Especial de Devolução)</strong> do Banco Central: a instituição do pagador pede o bloqueio e a devolução dos recursos na conta de quem recebeu, se ainda houver saldo.</p>
+<p>Pix não passa por bandeira nem por emissor de cartão, então <strong>não tem chargeback</strong>. Em caso de fraude ou golpe, existe o <strong>MED (Mecanismo Especial de Devolução)</strong> do Banco Central. O <strong>MED 2.0</strong>, obrigatório desde fevereiro de 2026, rastreia o dinheiro por várias camadas de contas, devolve em até 7 dias e, desde setembro de 2026, dá ao pagador até <strong>80 dias</strong> para contestar.</p>
 <ul>
 <li><strong>Regras, prazos e fonte de dado diferentes:</strong> o MED não vem no arquivo da adquirente.</li>
+<li><strong>Também é perda tardia:</strong> com 80 dias para contestar, o Pix tem a sua própria maturação. Para quem recebe em nome do lojista, o MED bloqueia saldo; se o lojista já sacou, a perda fica com a plataforma.</li>
 <li><strong>Consequência no case:</strong> a transação <code>tx_1003</code> é Pix. Se entra no denominador do chargeback rate, a taxa cai pela metade sem nenhuma melhora real do motor. Por isso a proposta separa a taxa de cartão e trata o MED como métrica própria quando o dado existir.</li>
 </ul>
 </div>
@@ -504,6 +584,8 @@ pre .w { color: #ffd479; }
 <dt>Chargeback rate</dt><dd>Chargebacks sobre aprovadas, em quantidade ou em valor. Só aprovadas no denominador, porque recusada não pode sofrer chargeback.</dd>
 <dt>Safra (cohort, vintage)</dt><dd>Grupo de transações que aconteceram no mesmo período. O chargeback que chega em 15/03 de uma venda de 01/03 conta na safra <strong>01/03</strong>. Isso permite comparar safras entre si: "as vendas de março tiveram mais fraude que as de fevereiro?"</dd>
 <dt>Por que safra e não data do chargeback?</dt><dd>Se contar pela data de chegada, o mês com mais fraude parece bom (os chargebacks ainda não chegaram) e o mês seguinte parece ruim (recebe os chargebacks atrasados). A safra liga a perda à decisão que a causou.</dd>
+<dt>Rótulo antecipado (TC40 / SAFE)</dt><dd>Relatório de fraude que o emissor envia à bandeira (Visa TC40, Mastercard SAFE) dias depois da compra, antes do chargeback. Usar a primeira evidência de fraude, venha de onde vier, encurta a espera para fechar uma safra. No case, a tx_1001 tem o relatório em D+4 e o chargeback em D+14.</dd>
+<dt>As duas taxas de chargeback</dt><dd><strong>Por safra</strong>: chargebacks atribuídos à data da venda sobre as aprovadas da safra, para avaliar o motor. <strong>Das bandeiras</strong>: fraude reportada e disputas notificadas no mês sobre liquidadas do mês, por lojista, para evitar multa. São perguntas diferentes e as duas são necessárias.</dd>
 <dt>Maturação</dt><dd>Quanto da perda final de uma safra já chegou. Uma safra de 10 dias pode ter só 20% dos seus chargebacks. Comparar safra imatura com madura é o erro mais comum em painel de risco.</dd>
 <dt>Curva de maturação</dt><dd>Percentual acumulado de chargebacks por dia desde a venda (D+15, D+30, D+60...). Com ela dá para <strong>projetar</strong> a perda final de uma safra jovem: observado dividido pelo percentual esperado.</dd>
 <dt>Perda bruta x perda líquida</dt><dd><strong>Bruta</strong>: soma do valor contestado. <strong>Líquida</strong>: bruta menos o que foi recuperado em disputa. A perda líquida é o custo real, mas exige o dado do desfecho da disputa.</dd>
@@ -558,6 +640,7 @@ pre .w { color: #ffd479; }
 <table>
 <thead><tr><th>Pergunta</th><th>Resposta curta</th></tr></thead>
 <tbody>
+<tr><td>Qual a diferença entre a taxa por safra e a das bandeiras?</td><td>A safra liga a perda à venda e avalia o motor. A das bandeiras conta o que foi notificado no mês, sobre liquidadas, por lojista, e decide multa.</td></tr>
 <tr><td>Por que não dá para fechar o mês de fraude no dia 1?</td><td>Os chargebacks do mês ainda vão chegar por até cerca de 120 dias. O número do mês corrente é um piso, não a perda final.</td></tr>
 <tr><td>Como saber se uma regra nova foi boa?</td><td>Comparar safras antes e depois, já maduras, olhando fraude e aprovação juntas. Idealmente, com grupo de controle.</td></tr>
 <tr><td>A taxa de chargeback caiu muito esta semana. Boa notícia?</td><td>Primeiro, checar a freshness do feed da adquirente e a maturidade das safras. Queda brusca costuma ser dado faltando.</td></tr>
@@ -582,6 +665,7 @@ pre .w { color: #ffd479; }
   <p>Material de apoio ao case de Analytics Engineering · Prevenção a Fraudes · Lucas Dias · Outubro de 2026</p>
   <p>Prazos, códigos e limites de bandeira variam por bandeira, motivo e versão das regras; os valores aqui são de referência.</p>
 </footer>
+
 
 </body>
 </html>

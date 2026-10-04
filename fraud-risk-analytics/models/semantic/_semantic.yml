@@ -1,161 +1,188 @@
 version: 2
-
-# Camada semântica: CADA métrica definida UMA vez, versionada e revisada em PR.
-# Dashboard, notebook e planilha consomem daqui -> fim das métricas divergentes entre times.
-
 models:
-  - name: metricflow_time_spine
-    description: Calendário diário para métricas com granularidade temporal.
-    time_spine:
-      standard_granularity_column: date_day
-    columns:
-      - name: date_day
-        granularity: day
-
+- name: metricflow_time_spine
+  description: Calendário diário para métricas com granularidade temporal.
+  time_spine:
+    standard_granularity_column: date_day
+  columns:
+  - name: date_day
+    granularity: day
 semantic_models:
-  - name: payment_attempts
-    description: Tentativas de pagamento com desfecho de chargeback por safra.
-    model: ref('fct_payment_attempts')
-    defaults:
-      agg_time_dimension: cohort_date
-    entities:
-      - name: transaction
-        type: primary
-        expr: transaction_id
-      - name: user
-        type: foreign
-        expr: user_id
-    dimensions:
-      - name: cohort_date
-        type: time
-        type_params:
-          time_granularity: day
-      - name: payment_method
-        type: categorical
-      - name: is_chargeback_eligible
-        type: categorical
-      - name: decline_source
-        type: categorical
-      - name: decision_source
-        type: categorical
-      - name: rule_triggered
-        type: categorical
-      - name: is_duplicate_candidate
-        type: categorical
-    measures:
-      - name: attempts
-        agg: sum
-        create_metric: true
-        expr: 1
-      - name: approved_transactions
-        agg: sum
-        create_metric: true
-        expr: case when is_approved then 1 else 0 end
-      - name: approved_amount
-        agg: sum
-        create_metric: true
-        expr: case when is_approved then amount else 0 end
-      - name: chargeback_transactions
-        agg: sum
-        create_metric: true
-        expr: case when is_approved and has_chargeback then 1 else 0 end
-      - name: chargeback_amount
-        agg: sum
-        create_metric: true
-        expr: case when is_approved then chargeback_amount else 0 end
-      - name: fraud_chargeback_amount
-        agg: sum
-        expr: case when is_approved then fraud_chargeback_amount else 0 end
-      - name: risk_rejected_transactions
-        agg: sum
-        create_metric: true
-        expr: case when decline_source = 'risk_engine' then 1 else 0 end
-
-  - name: chargeback_events
-    description: Eventos de chargeback por data de notificação (visão caixa/financeiro).
-    model: ref('fct_chargebacks')
-    defaults:
-      agg_time_dimension: chargeback_date
-    entities:
-      - name: chargeback
-        type: primary
-        expr: chargeback_id
-      - name: transaction
-        type: foreign
-        expr: transaction_id
-    dimensions:
-      - name: chargeback_date
-        type: time
-        type_params:
-          time_granularity: day
-      - name: reason_category
-        type: categorical
-      - name: is_fraud_reason
-        type: categorical
-    measures:
-      - name: gross_chargeback_amount
-        agg: sum
-        expr: cb_amount
-      - name: gross_fraud_loss_amount
-        agg: sum
-        expr: case when is_fraud_reason then cb_amount else 0 end
-
+- name: payment_attempts
+  description: Tentativas de pagamento com desfecho de chargeback por safra.
+  model: ref('fct_payment_attempts')
+  defaults:
+    agg_time_dimension: cohort_date
+  entities:
+  - name: transaction
+    type: primary
+    expr: transaction_id
+  - name: user
+    type: foreign
+    expr: user_id
+  dimensions:
+  - name: cohort_date
+    type: time
+    type_params:
+      time_granularity: day
+  - name: payment_method
+    type: categorical
+  - name: is_chargeback_eligible
+    type: categorical
+  - name: decline_source
+    type: categorical
+  - name: decision_source
+    type: categorical
+  - name: rule_triggered
+    type: categorical
+  - name: is_duplicate_candidate
+    type: categorical
+  - name: merchant_id
+    type: categorical
+  - name: country
+    type: categorical
+  - name: card_network
+    type: categorical
+  - name: issuer_decline_type
+    type: categorical
+  measures:
+  - name: attempts
+    agg: sum
+    create_metric: true
+    expr: 1
+  - name: approved_transactions
+    agg: sum
+    create_metric: true
+    expr: case when is_approved then 1 else 0 end
+  - name: approved_amount
+    agg: sum
+    create_metric: true
+    expr: case when is_approved then amount else 0 end
+  - name: chargeback_transactions
+    agg: sum
+    create_metric: true
+    expr: case when is_approved and has_chargeback then 1 else 0 end
+  - name: chargeback_amount
+    agg: sum
+    create_metric: true
+    expr: case when is_approved then chargeback_amount else 0 end
+  - name: fraud_chargeback_amount
+    agg: sum
+    expr: case when is_approved then fraud_chargeback_amount else 0 end
+  - name: risk_rejected_transactions
+    agg: sum
+    create_metric: true
+    expr: case when decline_source = 'risk_engine' then 1 else 0 end
+  - name: fraud_labeled_amount
+    agg: sum
+    create_metric: true
+    expr: case when is_approved and is_fraud_labeled then amount else 0 end
+  - name: orders
+    agg: count_distinct
+    create_metric: true
+    expr: order_id
+  - name: approved_orders
+    agg: count_distinct
+    create_metric: true
+    expr: case when is_approved then order_id end
+- name: chargeback_events
+  description: Eventos de chargeback por data de notificação (visão caixa/financeiro).
+  model: ref('fct_chargebacks')
+  defaults:
+    agg_time_dimension: chargeback_date
+  entities:
+  - name: chargeback
+    type: primary
+    expr: chargeback_id
+  - name: transaction
+    type: foreign
+    expr: transaction_id
+  dimensions:
+  - name: chargeback_date
+    type: time
+    type_params:
+      time_granularity: day
+  - name: reason_category
+    type: categorical
+  - name: is_fraud_reason
+    type: categorical
+  measures:
+  - name: gross_chargeback_amount
+    agg: sum
+    expr: cb_amount
+  - name: gross_fraud_loss_amount
+    agg: sum
+    expr: case when is_fraud_reason then cb_amount else 0 end
 metrics:
-  - name: approval_rate
-    label: Taxa de Aprovação (%)
-    description: Aprovadas / Tentadas (approved, declined, error). Definição oficial do contrato com Risco.
-    type: ratio
-    type_params:
-      numerator: approved_transactions
-      denominator: attempts
+- name: approval_rate
+  label: Taxa de Aprovação (%)
+  description: Aprovadas / Tentadas (approved, declined, error). Definição oficial do contrato com Risco.
+  type: ratio
+  type_params:
+    numerator: approved_transactions
+    denominator: attempts
+- name: risk_reject_rate
+  label: Taxa de Recusa pelo Motor (%)
+  description: Recusas atribuídas ao motor de risco / Tentadas. Isola o impacto das regras na conversão.
+  type: ratio
+  type_params:
+    numerator: risk_rejected_transactions
+    denominator: attempts
+- name: chargeback_rate_amount
+  label: Chargeback Rate Financeiro por Safra (%)
+  description: 'Valor de chargeback da safra / Valor aprovado da safra. Atribuído à data da transação. Filtrar is_chargeback_eligible
+    = true para a visão de cartão (Pix não tem chargeback).
 
-  - name: risk_reject_rate
-    label: Taxa de Recusa pelo Motor (%)
-    description: Recusas atribuídas ao motor de risco / Tentadas. Isola o impacto das regras na conversão.
-    type: ratio
-    type_params:
-      numerator: risk_rejected_transactions
-      denominator: attempts
+    '
+  type: ratio
+  type_params:
+    numerator: chargeback_amount
+    denominator: approved_amount
+- name: chargeback_rate_qty
+  label: Chargeback Rate Quantidade por Safra (%)
+  description: Transações com chargeback / Transações aprovadas, por safra.
+  type: ratio
+  type_params:
+    numerator: chargeback_transactions
+    denominator: approved_transactions
+- name: card_chargeback_rate_amount
+  label: Chargeback Rate Financeiro - Cartão (%)
+  description: Proposta. Mesma métrica restrita a métodos elegíveis a chargeback (denominador sem Pix).
+  type: ratio
+  type_params:
+    numerator: chargeback_amount
+    denominator: approved_amount
+  filter: '{{ Dimension(''transaction__is_chargeback_eligible'') }} = true'
+- name: gross_fraud_loss
+  label: Perda Bruta por Fraude (R$)
+  description: 'Soma de cb_amount com reason code de fraude, por data de notificação. Proposta ao negócio: o contrato
+    atual soma TODOS os chargebacks (inclui desacordo comercial).
 
-  - name: chargeback_rate_amount
-    label: Chargeback Rate Financeiro por Safra (%)
-    description: >
-      Valor de chargeback da safra / Valor aprovado da safra. Atribuído à data da transação.
-      Filtrar is_chargeback_eligible = true para a visão de cartão (Pix não tem chargeback).
-    type: ratio
-    type_params:
-      numerator: chargeback_amount
-      denominator: approved_amount
-
-  - name: chargeback_rate_qty
-    label: Chargeback Rate Quantidade por Safra (%)
-    description: Transações com chargeback / Transações aprovadas, por safra.
-    type: ratio
-    type_params:
-      numerator: chargeback_transactions
-      denominator: approved_transactions
-
-  - name: card_chargeback_rate_amount
-    label: Chargeback Rate Financeiro - Cartão (%)
-    description: Proposta. Mesma métrica restrita a métodos elegíveis a chargeback (denominador sem Pix).
-    type: ratio
-    type_params:
-      numerator: chargeback_amount
-      denominator: approved_amount
-    filter: "{{ Dimension('transaction__is_chargeback_eligible') }} = true"
-
-  - name: gross_fraud_loss
-    label: Perda Bruta por Fraude (R$)
-    description: >
-      Soma de cb_amount com reason code de fraude, por data de notificação.
-      Proposta ao negócio: o contrato atual soma TODOS os chargebacks (inclui desacordo comercial).
-    type: simple
-    type_params:
-      measure: gross_fraud_loss_amount
-
-  - name: gross_chargeback_loss
-    label: Perda Bruta Total por Chargeback (R$)
-    description: Definição literal do contrato atual - soma de todos os cb_amount.
-    type: simple
-    type_params:
-      measure: gross_chargeback_amount
+    '
+  type: simple
+  type_params:
+    measure: gross_fraud_loss_amount
+- name: gross_chargeback_loss
+  label: Perda Bruta Total por Chargeback (R$)
+  description: Definição literal do contrato atual - soma de todos os cb_amount.
+  type: simple
+  type_params:
+    measure: gross_chargeback_amount
+- name: fraud_bps
+  label: Fraude em bps do valor aprovado
+  description: Valor aprovado com qualquer evidência de fraude (TC40/SAFE, chargeback, reembolso, MED) por 10.000
+    do valor aprovado. Linguagem padrão do setor.
+  type: derived
+  type_params:
+    expr: fraud_labeled_amount * 10000 / approved_amount
+    metrics:
+    - name: fraud_labeled_amount
+    - name: approved_amount
+- name: approval_rate_by_order
+  label: Aprovação por pedido (%)
+  description: Pedidos com ao menos uma tentativa aprovada / pedidos. Retentativas (inclusive automáticas) não inflam
+    o denominador.
+  type: ratio
+  type_params:
+    numerator: approved_orders
+    denominator: orders

@@ -11,14 +11,29 @@ macro-paths: ["macros"]
 clean-targets: ["target", "dbt_packages"]
 
 vars:
-  # Data de referência para idade/maturidade de safra. Em produção = data da execução.
-  as_of_date: "2026-10-03"
+  # Data de referência para idade/maturidade de safra. null = current_date (produção).
+  # Idade NUNCA é gravada em tabela incremental: só calculada na leitura (ver macro as_of_date).
+  as_of_date: null
+  # Sobreposição do watermark incremental: reprocessa eventos ingeridos nas últimas N horas antes
+  # do watermark, cobrindo ingestão fora de ordem. O MERGE por chave torna a sobreposição idempotente.
+  incremental_lookback_hours: 6
+  # Janela para suspeita de duplicidade (segundos).
+  duplicate_window_seconds: 60
   # Janela de maturação acordada com Risco (dias). Ver docs/decisoes.md.
   maturity_window_days: 90
   # Tolerância de relógio entre motor de risco e gateway (segundos).
   clock_skew_tolerance_seconds: 5
   # Métodos sujeitos a chargeback (Pix tem MED, não chargeback).
   chargeback_eligible_methods: ["credit_card", "debit_card"]
+  # Programas de monitoramento das bandeiras (referência 2026; revisar quando as regras mudarem).
+  network_programs:
+    visa_vamp_merchant_ratio: 0.015        # VAMP lojista (LATAM) desde abr/2026
+    visa_vamp_min_settled_txn: 1500        # piso de volume do VAMP
+    visa_vamp_enumeration_ratio: 0.20      # teste de cartão
+    mc_ecm_ratio: 0.015                    # Mastercard ECM
+    mc_ecm_min_chargebacks: 100
+    mc_efm_fraud_bps: 50                   # Mastercard EFM (fraude, e-commerce)
+    early_warning_share: 0.75              # alerta preventivo a 75% do limite
 
 seeds:
   fraud_risk_analytics:
@@ -49,6 +64,88 @@ seeds:
         reason_code: varchar
         cb_amount: varchar
         _ingested_at: timestamp
+    # Fontes propostas no contrato v2. Dados ILUSTRATIVOS (não fazem parte do enunciado).
+    v2:
+      raw_payment_enrichment:
+        +column_types:
+          transaction_id: varchar
+          merchant_id: varchar
+          order_id: varchar
+          country: varchar
+          card_network: varchar
+          card_fingerprint: varchar
+          bin: varchar
+          three_ds_result: varchar
+          issuer_response_code: varchar
+          capture_status: varchar
+          settled_at: varchar
+          payout_term_days: varchar
+          currency: varchar
+          _ingested_at: timestamp
+      raw_merchants:
+        +column_types:
+          merchant_id: varchar
+          mcc: varchar
+          segment: varchar
+          created_at: varchar
+          _ingested_at: timestamp
+      raw_issuer_fraud_reports:
+        +column_types:
+          report_id: varchar
+          transaction_id: varchar
+          card_network: varchar
+          reported_at: varchar
+          fraud_type: varchar
+          _ingested_at: timestamp
+      raw_refunds:
+        +column_types:
+          refund_id: varchar
+          transaction_id: varchar
+          refunded_at: varchar
+          refund_amount: varchar
+          refund_reason: varchar
+          _ingested_at: timestamp
+      raw_dispute_alerts:
+        +column_types:
+          alert_id: varchar
+          transaction_id: varchar
+          alert_provider: varchar
+          alerted_at: varchar
+          alert_type: varchar
+          action_taken: varchar
+          _ingested_at: timestamp
+      raw_pix_med_claims:
+        +column_types:
+          claim_id: varchar
+          transaction_id: varchar
+          claimed_at: varchar
+          claim_amount: varchar
+          claim_status: varchar
+          returned_amount: varchar
+          _ingested_at: timestamp
+      raw_chargeback_outcomes:
+        +column_types:
+          chargeback_id: varchar
+          dispute_stage: varchar
+          outcome: varchar
+          resolved_at: varchar
+          recovered_amount: varchar
+          recovered_from_merchant_amount: varchar
+          _ingested_at: timestamp
+      raw_risk_rule_hits:
+        +column_types:
+          evaluation_id: varchar
+          rule_id: varchar
+          rule_version: varchar
+          is_shadow: varchar
+          rule_decision: varchar
+          _ingested_at: timestamp
+    ref_issuer_response_codes:
+      +schema: reference
+      +column_types:
+        issuer_response_code: varchar
+        description: varchar
+        decline_type: varchar
     ref_chargeback_reason_codes:
       +schema: reference
       +column_types:

@@ -20,7 +20,7 @@ python -m pytest spark/tests               # PySpark: paridade com o dbt (requer
 python spark/run_pipeline.py               # PySpark: carga + chargeback D+120 incremental
 ```
 
-Resultado esperado: `PASS=60 WARN=2 ERROR=0`. Os 2 WARN são achados do case, não falhas do pipeline:
+Resultado esperado: `PASS=97 WARN=2 ERROR=0` (32 modelos, 58 testes de dado, 8 unit tests, 1 snapshot). Os 2 WARN são achados do case, não falhas do pipeline:
 
 | Teste | Linha pega | Significado |
 |---|---|---|
@@ -30,11 +30,18 @@ Resultado esperado: `PASS=60 WARN=2 ERROR=0`. Os 2 WARN são achados do case, n�
 ## Estrutura
 
 ```
-seeds/                  Bronze (raw_*) + de-para de reason codes das bandeiras
+seeds/                  Bronze do enunciado (raw_*, idêntico ao case) + referências (reason codes, códigos do emissor)
+seeds/v2/               fontes propostas no contrato v2, com dados ILUSTRATIVOS: enriquecimento do pagamento
+                        (lojista, pedido, país, bandeira, 3DS, código do emissor, liquidação, prazo de repasse),
+                        lojistas, TC40/SAFE, reembolsos, alertas pré-disputa, MED do Pix, desfecho de disputa,
+                        regras avaliadas (com shadow mode)
 models/staging/         tipagem, dedup técnico, normalização (1:1 com a fonte)
 models/intermediate/    decisão de risco vigente, chargeback por tx, suspeitas de duplicidade
-models/marts/           fct_payment_attempts (contract enforced), fct_chargebacks, agregados por safra
-models/monitoring/      saúde diária (z-score, fail-open), curva de maturação de chargeback
+models/marts/           fct_payment_attempts (contract enforced), fct_chargebacks, fct_fraud_labels (label store),
+                        agregados por safra, ratio das bandeiras por lojista (VAMP/ECM/EFM), perda por lojista,
+                        exposição, backtest de regras
+models/monitoring/      saúde diária (z-score, fail-open), PSI do score, z-score por regra, curva de maturação
+snapshots/              histórico "como reportado" do agregado por safra
 models/semantic/        métricas oficiais (MetricFlow): definidas uma vez, consumidas por todos
 models/_unit_tests.yml  lógica testada com fixture: safra, origem da recusa, reason code, duplicidade
 tests/singular/         erros silenciosos + reconciliação Bronze ↔ Gold
@@ -50,9 +57,20 @@ dbt organiza a transformação (testes, contratos, CI, linhagem, camada semânti
 A regra de negócio está nas duas implementações e `spark/tests/test_parity.py` compara linha a linha
 `fct_payment_attempts` e `agg_chargeback_cohort_daily` do PySpark com a saída do dbt.
 
-- `spark/fraud_risk_spark/transformations.py`: funções puras de DataFrame, testáveis em memória.
+- `spark/fraud_risk_spark/transformations.py`: funções puras de DataFrame, testáveis em memória. Cobre o núcleo
+  (staging, decisão de risco, duplicidade, fato de tentativas, agregado por safra e incremental com sobreposição
+  e vizinhos). Os modelos do contrato v2 existem só no dbt.
 - `spark/fraud_risk_spark/io_delta.py`: escrita em produção (Delta `MERGE` e `replaceWhere`). Não roda
   no protótipo local, porque Delta no Windows exige Hadoop nativo; a lógica que ela grava é a testada.
+
+## Correções da revisão especialista
+
+| Bug | Correção | Prova |
+|---|---|---|
+| B1 watermark sem sobreposição perdia evento fora de ordem | `incremental_since()`: watermark − 6h, MERGE idempotente | unit test `incremental_picks_out_of_order_events_and_duplicate_neighbors` (dbt e PySpark) |
+| B2 idade/maturidade congeladas no incremental | calculadas na leitura (`rpt_chargeback_cohort_maturity`) | coluna removida do agregado |
+| B3 recusa por revisão caía como recusa do emissor | `decline_source = manual_review`; emissor soft/hard | unit test `decline_source_and_silent_failure_flags` |
+| B4 duplicata nova não reabria a antiga | vizinhos do mesmo usuário entram nas chaves afetadas | mesmo unit test de incremental |
 
 ## Números do case (saída de `rpt_metric_definition_sensitivity`)
 

@@ -9,7 +9,7 @@ Paridade com o dbt é verificada em tests/test_parity.py.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import Iterable
 
 from pyspark.sql import DataFrame, SparkSession, Window
@@ -20,6 +20,7 @@ CHARGEBACK_ELIGIBLE_METHODS = ("credit_card", "debit_card")
 CLOCK_SKEW_TOLERANCE_SECONDS = 5
 DUPLICATE_WINDOW_SECONDS = 60
 MATURITY_WINDOW_DAYS = 90
+INCREMENTAL_LOOKBACK_HOURS = 6
 
 
 @dataclass(frozen=True)
@@ -78,9 +79,9 @@ def stg_risk_evaluations(raw: DataFrame) -> DataFrame:
     )
     return _latest_by(typed, "evaluation_id").withColumn(
         "decision_source",
-        F.when(F.col("rule_triggered").startswith("rule_manual_review"), "manual_review").otherwise(
-            "automatic"
-        ),
+        F.when(F.col("rule_triggered").startswith("rule_manual_review"), "manual_review")
+        .when(F.col("rule_triggered").startswith("rule_partner_review"), "partner_review")
+        .otherwise("automatic"),
     )
 
 
@@ -227,7 +228,14 @@ def build_payment_attempts(
             "is_approved",
             F.when(F.col("status") == "approved", F.lit(None))
             .when(F.col("status") == "error", "technical_error")
+            # B3: recusa humana (interna ou parceiro) não é do motor nem do emissor
+            .when(
+                (F.col("risk_action") == "reject")
+                & F.col("decision_source").isin("manual_review", "partner_review"),
+                "manual_review",
+            )
             .when(F.col("risk_action") == "reject", "risk_engine")
+            .when(F.col("risk_action") == "review", "manual_review")
             .when(~has_risk, "unknown_no_risk_evaluation")
             .otherwise("issuer_or_acquirer")
             .alias("decline_source"),
@@ -262,12 +270,13 @@ def build_payment_attempts(
 
 def build_cohort_aggregate(
     attempts: DataFrame,
-    as_of_date: date,
     cohorts: Iterable[date] | None = None,
 ) -> DataFrame:
     """agg_chargeback_cohort_daily. Só numeradores/denominadores aditivos.
 
     Com `cohorts`, calcula apenas essas safras (usado no reprocessamento incremental).
+    B2: idade e maturidade NÃO entram aqui (dependem de "hoje" e congelariam nas safras não
+    reprocessadas). Use cohort_maturity() na leitura.
     """
     if cohorts is not None:
         attempts = attempts.where(F.col("cohort_date").isin(list(cohorts)))
@@ -293,11 +302,15 @@ def build_cohort_aggregate(
         F.coalesce(F.sum(F.when(approved, F.col("fraud_chargeback_amount"))), zero).alias(
             "fraud_chargeback_amount"
         ),
-        F.datediff(F.lit(as_of_date), F.first("cohort_date")).alias("cohort_age_days"),
-        (F.datediff(F.lit(as_of_date), F.first("cohort_date")) >= MATURITY_WINDOW_DAYS).alias(
-            "is_mature"
-        ),
         F.max("_updated_at").alias("_updated_at"),
+    )
+
+
+def cohort_maturity(cohort_aggregate: DataFrame, as_of_date: date) -> DataFrame:
+    """Idade e maturidade calculadas na leitura (equivalente a rpt_chargeback_cohort_maturity)."""
+    age = F.datediff(F.lit(as_of_date), F.col("cohort_date"))
+    return cohort_aggregate.withColumns(
+        {"cohort_age_days": age, "is_mature": age >= MATURITY_WINDOW_DAYS}
     )
 
 
@@ -321,26 +334,42 @@ def affected_transaction_ids(
     evaluations: DataFrame,
     chargebacks: DataFrame,
     since: Watermarks,
+    lookback_hours: int = INCREMENTAL_LOOKBACK_HOURS,
 ) -> DataFrame:
     """Toda transação que recebeu evento novo em QUALQUER fonte desde o último run.
 
     Chargeback de D+120 reabre a transação de D-120: sem janela fixa, sem perda.
+    B1: sobreposição de `lookback_hours` antes do watermark cobre evento ingerido fora de ordem
+        (o merge por chave torna o reprocessamento idempotente).
+    B4: transações vizinhas do mesmo usuário (janela de duplicidade) também reabrem.
     """
-    return (
-        transactions.where(F.col("_ingested_at") > F.lit(since.transactions))
+    overlap = timedelta(hours=lookback_hours)
+    changed = (
+        transactions.where(F.col("_ingested_at") > F.lit(since.transactions - overlap))
         .select("transaction_id")
         .unionByName(
-            evaluations.where(F.col("_ingested_at") > F.lit(since.evaluations)).select(
+            evaluations.where(F.col("_ingested_at") > F.lit(since.evaluations - overlap)).select(
                 "transaction_id"
             )
         )
         .unionByName(
-            chargebacks.where(F.col("_ingested_at") > F.lit(since.chargebacks)).select(
+            chargebacks.where(F.col("_ingested_at") > F.lit(since.chargebacks - overlap)).select(
                 "transaction_id"
             )
         )
         .distinct()
     )
+    newer = transactions.join(changed, "transaction_id", "left_semi").alias("newer")
+    older = transactions.alias("older")
+    neighbors = newer.join(
+        older,
+        (F.col("newer.user_id") == F.col("older.user_id"))
+        & (
+            F.abs(F.unix_timestamp("newer.transaction_at") - F.unix_timestamp("older.transaction_at"))
+            <= DUPLICATE_WINDOW_SECONDS
+        ),
+    ).select(F.col("older.transaction_id").alias("transaction_id"))
+    return changed.unionByName(neighbors).distinct()
 
 
 def merge_by_key(current: DataFrame, changes: DataFrame, keys: list[str]) -> DataFrame:

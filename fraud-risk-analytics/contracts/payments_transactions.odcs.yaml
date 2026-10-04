@@ -1,0 +1,57 @@
+# Data Contract - Open Data Contract Standard (ODCS) v3
+# Produtor: time de Payments (gateway/checkout) | Consumidor: Data & AE Anti-Fraud & Risk
+apiVersion: v3.0.2
+kind: DataContract
+id: payments-transactions
+name: raw_transactions
+version: 2.0.0
+status: proposed
+domain: payments-risk
+
+description:
+  purpose: >
+    Tentativas de pagamento enviadas para risco e autorização. v1 = 6 campos do enunciado.
+    v2 adiciona o que risco precisa para medir lojista, bandeira, exposição e conversão por pedido.
+
+schema:
+  - name: raw_transactions
+    physicalType: table
+    properties:
+      - {name: transaction_id, logicalType: string, required: true, unique: true, primaryKey: true}
+      - {name: user_id, logicalType: string, required: true, description: "PII (LGPD): mascarado por padrão."}
+      - name: transaction_at
+        logicalType: timestamp
+        required: true
+        description: ISO-8601 COM offset. A safra é a data no fuso do país da operação.
+      - {name: amount, logicalType: number, required: true, description: "> 0, na moeda de currency."}
+      - {name: status, logicalType: string, required: true, description: "approved | declined | error"}
+      - {name: payment_method, logicalType: string, required: true, description: "credit_card | debit_card | pix | boleto | ..."}
+      - {name: merchant_id, logicalType: string, required: true, description: "[v2] Lojista. Programas das bandeiras e perda são medidos por lojista."}
+      - {name: order_id, logicalType: string, required: true, description: "[v2] Pedido. Retentativas (inclusive automáticas) compartilham o pedido."}
+      - {name: country, logicalType: string, required: true, description: "[v2] ISO-3166 (BR, AR, MX...). Moeda, fuso e prazos de disputa."}
+      - {name: currency, logicalType: string, required: true, description: "[v2] ISO-4217."}
+      - {name: card_network, logicalType: string, required: false, description: "[v2] visa | mastercard | elo | amex | hipercard."}
+      - {name: card_fingerprint, logicalType: string, required: false, description: "[v2] Hash do cartão. NUNCA o número (PCI DSS)."}
+      - {name: bin, logicalType: string, required: false, description: "[v2] 6-8 primeiros dígitos (emissor, país, tipo)."}
+      - {name: device_id, logicalType: string, required: false, description: "[v2] Fingerprint do dispositivo (velocity, fraude organizada)."}
+      - {name: three_ds_result, logicalType: string, required: false, description: "[v2] authenticated | not_authenticated | not_attempted. Liability shift."}
+      - {name: issuer_response_code, logicalType: string, required: false, description: "[v2] Código de resposta do emissor: recusa soft x hard."}
+      - {name: capture_status, logicalType: string, required: true, description: "[v2] captured | not_captured | canceled."}
+      - {name: settled_at, logicalType: timestamp, required: false, description: "[v2] Liquidação. Denominador dos programas das bandeiras."}
+      - {name: payout_term_days, logicalType: integer, required: false, description: "[v2] Prazo de repasse ao lojista (D+2/D+14/D+30): define exposição."}
+      - {name: installments, logicalType: integer, required: false, description: "[v2] Número de parcelas."}
+      - {name: retry_of_transaction_id, logicalType: string, required: false, description: "[v2] Retentativa automática: aponta a tentativa original."}
+
+quality:
+  - rule: completeness
+    description: transaction_id, merchant_id, order_id, amount, status nunca nulos.
+  - rule: forbiddenColumns
+    description: PAN, CVV e validade nunca trafegam (teste assert_no_card_data_in_analytics).
+
+slaProperties:
+  - {property: latency, value: 5, unit: minutes}
+  - {property: frequency, value: streaming}
+
+team:
+  - {role: owner, name: Payments}
+  - {role: consumer, name: Data & Analytics Engineering - Anti-Fraud & Risk}

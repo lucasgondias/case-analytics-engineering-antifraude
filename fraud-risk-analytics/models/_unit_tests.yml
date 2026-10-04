@@ -1,115 +1,557 @@
 version: 2
-
-# Testes unitários da LÓGICA (dado fixo -> saída esperada). Rodam no CI antes de tocar dado real.
-# Fixtures derivadas do case + casos de borda que o case não traz.
-
 unit_tests:
+- name: cohort_attribution_uses_transaction_date_not_chargeback_date
+  description: 'Chargeback notificado em 15/03 (D+14) e outro em 29/06 (D+120, fora da janela de 90d) pontuam na
+    safra 01/03. Pix aprovado não é elegível a chargeback.
 
-  - name: cohort_attribution_uses_transaction_date_not_chargeback_date
-    description: >
-      Chargeback notificado em 15/03 (D+14) e outro em 29/06 (D+120, fora da janela de 90d)
-      pontuam na safra 01/03. Pix aprovado não é elegível a chargeback.
-    model: agg_chargeback_cohort_daily
-    overrides:
-      macros:
-        is_incremental: false
-    given:
-      - input: ref('fct_payment_attempts')
-        rows:
-          - {transaction_id: tx_1001, cohort_date: 2026-03-01, payment_method: credit_card, is_chargeback_eligible: true, amount: 150.00, is_approved: true, has_chargeback: true, has_fraud_chargeback: true, chargeback_amount: 150.00, fraud_chargeback_amount: 150.00, is_duplicate_candidate: false}
-          - {transaction_id: tx_late, cohort_date: 2026-03-01, payment_method: credit_card, is_chargeback_eligible: true, amount: 200.00, is_approved: true, has_chargeback: true, has_fraud_chargeback: true, chargeback_amount: 200.00, fraud_chargeback_amount: 200.00, is_duplicate_candidate: false}
-          - {transaction_id: tx_1002, cohort_date: 2026-03-01, payment_method: credit_card, is_chargeback_eligible: true, amount: 500.00, is_approved: false, has_chargeback: false, has_fraud_chargeback: false, chargeback_amount: 0, fraud_chargeback_amount: 0, is_duplicate_candidate: false}
-          - {transaction_id: tx_1003, cohort_date: 2026-03-01, payment_method: pix, is_chargeback_eligible: false, amount: 1200.00, is_approved: true, has_chargeback: false, has_fraud_chargeback: false, chargeback_amount: 0, fraud_chargeback_amount: 0, is_duplicate_candidate: false}
-    expect:
-      rows:
-        - {cohort_date: 2026-03-01, payment_method: credit_card, is_chargeback_eligible: true, attempt_count: 3, approved_count: 2, approved_amount: 350.00, chargeback_transaction_count: 2, chargeback_amount: 350.00}
-        - {cohort_date: 2026-03-01, payment_method: pix, is_chargeback_eligible: false, attempt_count: 1, approved_count: 1, approved_amount: 1200.00, chargeback_transaction_count: 0, chargeback_amount: 0}
-
-  - name: decline_source_and_silent_failure_flags
-    description: >
-      Recusa atribuída à origem certa; aprovada sem avaliação (tx_1005) é sinalizada;
-      erro técnico não é culpa do motor; recusa sem avaliação fica como unknown.
-    model: fct_payment_attempts
-    overrides:
-      macros:
-        is_incremental: false
-    given:
-      - input: ref('stg_payments__transactions')
-        rows:
-          - {transaction_id: tx_1002, transaction_at: "2026-03-01 10:05:00", transaction_date: 2026-03-01, amount: 500.00, status: declined, payment_method: credit_card, is_approved: false, is_chargeback_eligible: true, _ingested_at: "2026-03-01 10:05:04"}
-          - {transaction_id: tx_1005, transaction_at: "2026-03-01 11:30:00", transaction_date: 2026-03-01, amount: 350.00, status: approved, payment_method: credit_card, is_approved: true, is_chargeback_eligible: true, _ingested_at: "2026-03-01 11:30:04"}
-          - {transaction_id: tx_err, transaction_at: "2026-03-01 12:00:00", transaction_date: 2026-03-01, amount: 80.00, status: error, payment_method: credit_card, is_approved: false, is_chargeback_eligible: true, _ingested_at: "2026-03-01 12:00:04"}
-          - {transaction_id: tx_iss, transaction_at: "2026-03-01 12:10:00", transaction_date: 2026-03-01, amount: 90.00, status: declined, payment_method: credit_card, is_approved: false, is_chargeback_eligible: true, _ingested_at: "2026-03-01 12:10:04"}
-          - {transaction_id: tx_unk, transaction_at: "2026-03-01 12:20:00", transaction_date: 2026-03-01, amount: 95.00, status: declined, payment_method: credit_card, is_approved: false, is_chargeback_eligible: true, _ingested_at: "2026-03-01 12:20:04"}
-      - input: ref('stg_risk__evaluations')
-        rows:
-          - {transaction_id: tx_1002, _ingested_at: "2026-03-01 10:05:01"}
-      - input: ref('stg_acquirer__chargebacks')
-        rows: []
-      - input: ref('int_risk__decision_per_transaction')
-        rows:
-          - {transaction_id: tx_1002, evaluation_id: eval_02, risk_score: 89, risk_action: reject, rule_triggered: rule_high_velocity, decision_source: automatic, evaluation_count: 1}
-          - {transaction_id: tx_iss, evaluation_id: eval_x, risk_score: 10, risk_action: approve, decision_source: automatic, evaluation_count: 1}
-      - input: ref('int_chargebacks__per_transaction')
-        rows: []
-      - input: ref('int_transactions__duplicate_suspects')
-        rows: []
-    expect:
-      rows:
-        - {transaction_id: tx_1002, decline_source: risk_engine, is_approved_without_risk_evaluation: false, has_chargeback: false}
-        - {transaction_id: tx_1005, decline_source: null, is_approved_without_risk_evaluation: true, has_chargeback: false}
-        - {transaction_id: tx_err, decline_source: technical_error, is_approved_without_risk_evaluation: false, has_chargeback: false}
-        - {transaction_id: tx_iss, decline_source: issuer_or_acquirer, is_approved_without_risk_evaluation: false, has_chargeback: false}
-        - {transaction_id: tx_unk, decline_source: unknown_no_risk_evaluation, is_approved_without_risk_evaluation: false, has_chargeback: false}
-
-  - name: risk_decision_is_last_pre_authorization_evaluation
-    description: Re-score depois da autorização não substitui a decisão que valeu na hora.
-    model: int_risk__decision_per_transaction
-    given:
-      - input: ref('stg_risk__evaluations')
-        rows:
-          - {evaluation_id: e1, transaction_id: tx_a, evaluated_at: "2026-03-01 09:59:50", risk_score: 40, risk_action: review, decision_source: automatic}
-          - {evaluation_id: e2, transaction_id: tx_a, evaluated_at: "2026-03-01 09:59:58", risk_score: 12, risk_action: approve, decision_source: automatic}
-          - {evaluation_id: e3, transaction_id: tx_a, evaluated_at: "2026-03-01 10:30:00", risk_score: 95, risk_action: reject, decision_source: automatic}
-      - input: ref('stg_payments__transactions')
-        rows:
-          - {transaction_id: tx_a, transaction_at: "2026-03-01 10:00:00"}
-    expect:
-      rows:
-        - {transaction_id: tx_a, evaluation_id: e2, risk_action: approve, evaluation_count: 3, post_authorization_evaluation_count: 1}
-
-  - name: chargeback_reason_code_classification
-    description: Só reason codes de fraude entram na Perda por Fraude; código novo vira unmapped (warn).
-    model: stg_acquirer__chargebacks
-    given:
-      - input: source('raw', 'raw_chargebacks')
-        rows:
-          - {chargeback_id: cb_901, transaction_id: tx_1001, chargeback_at: "2026-03-15 14:00:00", reason_code: "10.4_fraud", cb_amount: "150.00", _ingested_at: "2026-03-15 14:05:00"}
-          - {chargeback_id: cb_902, transaction_id: tx_2001, chargeback_at: "2026-03-20 09:00:00", reason_code: "13.1", cb_amount: "80.00", _ingested_at: "2026-03-20 09:05:00"}
-          - {chargeback_id: cb_903, transaction_id: tx_2002, chargeback_at: "2026-03-21 09:00:00", reason_code: "4837", cb_amount: "60.00", _ingested_at: "2026-03-21 09:05:00"}
-          - {chargeback_id: cb_904, transaction_id: tx_2003, chargeback_at: "2026-03-22 09:00:00", reason_code: "99.9_new", cb_amount: "10.00", _ingested_at: "2026-03-22 09:05:00"}
-      - input: ref('ref_chargeback_reason_codes')
-        rows:
-          - {network: visa, reason_code: "10.4", reason_category: fraud}
-          - {network: visa, reason_code: "13.1", reason_category: consumer_dispute}
-          - {network: mastercard, reason_code: "4837", reason_category: fraud}
-    expect:
-      rows:
-        - {chargeback_id: cb_901, network_reason_code: "10.4", reason_category: fraud, is_fraud_reason: true}
-        - {chargeback_id: cb_902, network_reason_code: "13.1", reason_category: consumer_dispute, is_fraud_reason: false}
-        - {chargeback_id: cb_903, network_reason_code: "4837", reason_category: fraud, is_fraud_reason: true}
-        - {chargeback_id: cb_904, network_reason_code: "99.9", reason_category: unmapped, is_fraud_reason: false}
-
-  - name: duplicate_suspects_only_within_60_seconds
-    description: tx_1004/tx_1005 (mesmo segundo) são suspeitas; nova tentativa 5 min depois não é.
-    model: int_transactions__duplicate_suspects
-    given:
-      - input: ref('stg_payments__transactions')
-        rows:
-          - {transaction_id: tx_1004, user_id: usr_03, transaction_at: "2026-03-01 11:30:00", amount: 350.00, payment_method: credit_card}
-          - {transaction_id: tx_1005, user_id: usr_03, transaction_at: "2026-03-01 11:30:00", amount: 350.00, payment_method: credit_card}
-          - {transaction_id: tx_1006, user_id: usr_03, transaction_at: "2026-03-01 11:35:00", amount: 350.00, payment_method: credit_card}
-    expect:
-      rows:
-        - {transaction_id: tx_1004, first_transaction_id_in_group: tx_1004, group_size: 2, is_duplicate_candidate: false}
-        - {transaction_id: tx_1005, first_transaction_id_in_group: tx_1004, group_size: 2, is_duplicate_candidate: true}
+    '
+  model: agg_chargeback_cohort_daily
+  overrides:
+    macros:
+      is_incremental: false
+  given:
+  - input: ref('fct_payment_attempts')
+    rows:
+    - transaction_id: tx_1001
+      cohort_date: 2026-03-01
+      payment_method: credit_card
+      is_chargeback_eligible: true
+      amount: 150.0
+      is_approved: true
+      has_chargeback: true
+      has_fraud_chargeback: true
+      chargeback_amount: 150.0
+      fraud_chargeback_amount: 150.0
+      is_duplicate_candidate: false
+    - transaction_id: tx_late
+      cohort_date: 2026-03-01
+      payment_method: credit_card
+      is_chargeback_eligible: true
+      amount: 200.0
+      is_approved: true
+      has_chargeback: true
+      has_fraud_chargeback: true
+      chargeback_amount: 200.0
+      fraud_chargeback_amount: 200.0
+      is_duplicate_candidate: false
+    - transaction_id: tx_1002
+      cohort_date: 2026-03-01
+      payment_method: credit_card
+      is_chargeback_eligible: true
+      amount: 500.0
+      is_approved: false
+      has_chargeback: false
+      has_fraud_chargeback: false
+      chargeback_amount: 0
+      fraud_chargeback_amount: 0
+      is_duplicate_candidate: false
+    - transaction_id: tx_1003
+      cohort_date: 2026-03-01
+      payment_method: pix
+      is_chargeback_eligible: false
+      amount: 1200.0
+      is_approved: true
+      has_chargeback: false
+      has_fraud_chargeback: false
+      chargeback_amount: 0
+      fraud_chargeback_amount: 0
+      is_duplicate_candidate: false
+  expect:
+    rows:
+    - cohort_date: 2026-03-01
+      payment_method: credit_card
+      is_chargeback_eligible: true
+      attempt_count: 3
+      approved_count: 2
+      approved_amount: 350.0
+      chargeback_transaction_count: 2
+      chargeback_amount: 350.0
+    - cohort_date: 2026-03-01
+      payment_method: pix
+      is_chargeback_eligible: false
+      attempt_count: 1
+      approved_count: 1
+      approved_amount: 1200.0
+      chargeback_transaction_count: 0
+      chargeback_amount: 0
+- name: decline_source_and_silent_failure_flags
+  description: Recusa atribuída à origem certa (motor, revisão manual, emissor soft/hard, erro técnico); aprovada
+    sem avaliação (tx_1005) é sinalizada; recusa sem avaliação fica como unknown.
+  model: fct_payment_attempts
+  overrides:
+    macros:
+      is_incremental: false
+  given:
+  - input: ref('stg_payments__transactions')
+    rows:
+    - transaction_id: tx_1002
+      transaction_at: '2026-03-01 10:05:00'
+      transaction_date: 2026-03-01
+      amount: 500.0
+      status: declined
+      payment_method: credit_card
+      is_approved: false
+      is_chargeback_eligible: true
+      _ingested_at: '2026-03-01 10:05:04'
+    - transaction_id: tx_1005
+      transaction_at: '2026-03-01 11:30:00'
+      transaction_date: 2026-03-01
+      amount: 350.0
+      status: approved
+      payment_method: credit_card
+      is_approved: true
+      is_chargeback_eligible: true
+      _ingested_at: '2026-03-01 11:30:04'
+    - transaction_id: tx_err
+      transaction_at: '2026-03-01 12:00:00'
+      transaction_date: 2026-03-01
+      amount: 80.0
+      status: error
+      payment_method: credit_card
+      is_approved: false
+      is_chargeback_eligible: true
+      _ingested_at: '2026-03-01 12:00:04'
+    - transaction_id: tx_iss
+      transaction_at: '2026-03-01 12:10:00'
+      transaction_date: 2026-03-01
+      amount: 90.0
+      status: declined
+      payment_method: credit_card
+      is_approved: false
+      is_chargeback_eligible: true
+      _ingested_at: '2026-03-01 12:10:04'
+    - transaction_id: tx_unk
+      transaction_at: '2026-03-01 12:20:00'
+      transaction_date: 2026-03-01
+      amount: 95.0
+      status: declined
+      payment_method: credit_card
+      is_approved: false
+      is_chargeback_eligible: true
+      _ingested_at: '2026-03-01 12:20:04'
+    - transaction_id: tx_mr
+      transaction_at: '2026-03-01 12:30:00'
+      transaction_date: '2026-03-01'
+      amount: 70.0
+      status: declined
+      payment_method: credit_card
+      is_approved: false
+      is_chargeback_eligible: true
+      _ingested_at: '2026-03-01 12:30:04'
+  - input: ref('stg_risk__evaluations')
+    rows:
+    - transaction_id: tx_1002
+      _ingested_at: '2026-03-01 10:05:01'
+  - input: ref('stg_acquirer__chargebacks')
+    rows: []
+  - input: ref('int_risk__decision_per_transaction')
+    rows:
+    - transaction_id: tx_1002
+      evaluation_id: eval_02
+      risk_score: 89
+      risk_action: reject
+      rule_triggered: rule_high_velocity
+      decision_source: automatic
+      evaluation_count: 1
+    - transaction_id: tx_iss
+      evaluation_id: eval_x
+      risk_score: 10
+      risk_action: approve
+      decision_source: automatic
+      evaluation_count: 1
+    - transaction_id: tx_mr
+      evaluation_id: eval_mr
+      risk_score: 60
+      risk_action: reject
+      rule_triggered: rule_manual_review_reject
+      decision_source: manual_review
+      evaluation_count: 2
+  - input: ref('int_chargebacks__per_transaction')
+    rows: []
+  - input: ref('int_transactions__duplicate_suspects')
+    rows: []
+  - input: ref('stg_payments__enrichment')
+    rows:
+    - transaction_id: tx_iss
+      issuer_response_code: '51'
+      capture_status: not_captured
+  - input: ref('ref_issuer_response_codes')
+    rows:
+    - issuer_response_code: '51'
+      decline_type: soft
+    - issuer_response_code: '43'
+      decline_type: hard
+  - input: ref('fct_fraud_labels')
+    rows: []
+  - input: ref('stg_payments__refunds')
+    rows: []
+  - input: ref('int_fraud_labels__per_transaction')
+    rows: []
+  expect:
+    rows:
+    - transaction_id: tx_1002
+      decline_source: risk_engine
+      issuer_decline_type: null
+      is_approved_without_risk_evaluation: false
+    - transaction_id: tx_1005
+      decline_source: null
+      issuer_decline_type: null
+      is_approved_without_risk_evaluation: true
+    - transaction_id: tx_err
+      decline_source: technical_error
+      issuer_decline_type: null
+      is_approved_without_risk_evaluation: false
+    - transaction_id: tx_iss
+      decline_source: issuer_or_acquirer
+      issuer_decline_type: soft
+      is_approved_without_risk_evaluation: false
+    - transaction_id: tx_unk
+      decline_source: unknown_no_risk_evaluation
+      issuer_decline_type: unknown
+      is_approved_without_risk_evaluation: false
+    - transaction_id: tx_mr
+      decline_source: manual_review
+      issuer_decline_type: null
+      is_approved_without_risk_evaluation: false
+- name: risk_decision_is_last_pre_authorization_evaluation
+  description: Re-score depois da autorização não substitui a decisão que valeu na hora.
+  model: int_risk__decision_per_transaction
+  given:
+  - input: ref('stg_risk__evaluations')
+    rows:
+    - evaluation_id: e1
+      transaction_id: tx_a
+      evaluated_at: '2026-03-01 09:59:50'
+      risk_score: 40
+      risk_action: review
+      decision_source: automatic
+    - evaluation_id: e2
+      transaction_id: tx_a
+      evaluated_at: '2026-03-01 09:59:58'
+      risk_score: 12
+      risk_action: approve
+      decision_source: automatic
+    - evaluation_id: e3
+      transaction_id: tx_a
+      evaluated_at: '2026-03-01 10:30:00'
+      risk_score: 95
+      risk_action: reject
+      decision_source: automatic
+  - input: ref('stg_payments__transactions')
+    rows:
+    - transaction_id: tx_a
+      transaction_at: '2026-03-01 10:00:00'
+  expect:
+    rows:
+    - transaction_id: tx_a
+      evaluation_id: e2
+      risk_action: approve
+      evaluation_count: 3
+      post_authorization_evaluation_count: 1
+- name: chargeback_reason_code_classification
+  description: Só reason codes de fraude entram na Perda por Fraude; código novo vira unmapped (warn).
+  model: stg_acquirer__chargebacks
+  given:
+  - input: source('raw', 'raw_chargebacks')
+    rows:
+    - chargeback_id: cb_901
+      transaction_id: tx_1001
+      chargeback_at: '2026-03-15 14:00:00'
+      reason_code: 10.4_fraud
+      cb_amount: '150.00'
+      _ingested_at: '2026-03-15 14:05:00'
+    - chargeback_id: cb_902
+      transaction_id: tx_2001
+      chargeback_at: '2026-03-20 09:00:00'
+      reason_code: '13.1'
+      cb_amount: '80.00'
+      _ingested_at: '2026-03-20 09:05:00'
+    - chargeback_id: cb_903
+      transaction_id: tx_2002
+      chargeback_at: '2026-03-21 09:00:00'
+      reason_code: '4837'
+      cb_amount: '60.00'
+      _ingested_at: '2026-03-21 09:05:00'
+    - chargeback_id: cb_904
+      transaction_id: tx_2003
+      chargeback_at: '2026-03-22 09:00:00'
+      reason_code: 99.9_new
+      cb_amount: '10.00'
+      _ingested_at: '2026-03-22 09:05:00'
+  - input: ref('ref_chargeback_reason_codes')
+    rows:
+    - network: visa
+      reason_code: '10.4'
+      reason_category: fraud
+    - network: visa
+      reason_code: '13.1'
+      reason_category: consumer_dispute
+    - network: mastercard
+      reason_code: '4837'
+      reason_category: fraud
+  expect:
+    rows:
+    - chargeback_id: cb_901
+      network_reason_code: '10.4'
+      reason_category: fraud
+      is_fraud_reason: true
+    - chargeback_id: cb_902
+      network_reason_code: '13.1'
+      reason_category: consumer_dispute
+      is_fraud_reason: false
+    - chargeback_id: cb_903
+      network_reason_code: '4837'
+      reason_category: fraud
+      is_fraud_reason: true
+    - chargeback_id: cb_904
+      network_reason_code: '99.9'
+      reason_category: unmapped
+      is_fraud_reason: false
+- name: duplicate_suspects_only_within_60_seconds
+  description: tx_1004/tx_1005 (mesmo segundo) são suspeitas; nova tentativa 5 min depois não é.
+  model: int_transactions__duplicate_suspects
+  given:
+  - input: ref('stg_payments__transactions')
+    rows:
+    - transaction_id: tx_1004
+      user_id: usr_03
+      transaction_at: '2026-03-01 11:30:00'
+      amount: 350.0
+      payment_method: credit_card
+    - transaction_id: tx_1005
+      user_id: usr_03
+      transaction_at: '2026-03-01 11:30:00'
+      amount: 350.0
+      payment_method: credit_card
+    - transaction_id: tx_1006
+      user_id: usr_03
+      transaction_at: '2026-03-01 11:35:00'
+      amount: 350.0
+      payment_method: credit_card
+  expect:
+    rows:
+    - transaction_id: tx_1004
+      first_transaction_id_in_group: tx_1004
+      group_size: 2
+      is_duplicate_candidate: false
+    - transaction_id: tx_1005
+      first_transaction_id_in_group: tx_1004
+      group_size: 2
+      is_duplicate_candidate: true
+- name: fraud_label_uses_earliest_evidence
+  description: 'TC40 (D+4) chega antes do chargeback (D+14): o rótulo usa a primeira evidência e guarda todas as
+    origens.'
+  model: int_fraud_labels__per_transaction
+  given:
+  - input: ref('fct_fraud_labels')
+    rows:
+    - transaction_id: tx_1001
+      evidence_id: tc40_7001
+      label_source: issuer_fraud_report
+      label_at: '2026-03-05 08:00:00'
+    - transaction_id: tx_1001
+      evidence_id: cb_901
+      label_source: chargeback_fraud
+      label_at: '2026-03-15 14:00:00'
+      evidence_amount: 150.0
+  expect:
+    rows:
+    - transaction_id: tx_1001
+      first_fraud_label_at: '2026-03-05 08:00:00'
+      first_fraud_label_source: issuer_fraud_report
+      fraud_evidence_count: 2
+      fraud_label_sources: chargeback_fraud,issuer_fraud_report
+- name: network_ratios_follow_card_scheme_rules
+  description: VAMP soma fraude reportada (TC40) e disputa no numerador sobre liquidadas do mês; ECM divide chargebacks
+    do mês pelas liquidadas do mês ANTERIOR.
+  model: agg_network_monitoring_monthly
+  overrides:
+    vars:
+      as_of_date: '2026-10-03'
+  given:
+  - input: ref('fct_payment_attempts')
+    rows:
+    - transaction_id: v1
+      merchant_id: m_v
+      card_network: visa
+      is_chargeback_eligible: true
+      is_settled: true
+      settled_at: '2026-03-02 03:00:00'
+      amount: 100.0
+    - transaction_id: v2
+      merchant_id: m_v
+      card_network: visa
+      is_chargeback_eligible: true
+      is_settled: true
+      settled_at: '2026-03-03 03:00:00'
+      amount: 100.0
+    - transaction_id: v3
+      merchant_id: m_v
+      card_network: visa
+      is_chargeback_eligible: true
+      is_settled: true
+      settled_at: '2026-03-04 03:00:00'
+      amount: 100.0
+    - transaction_id: v4
+      merchant_id: m_v
+      card_network: visa
+      is_chargeback_eligible: true
+      is_settled: true
+      settled_at: '2026-03-05 03:00:00'
+      amount: 100.0
+    - transaction_id: c1
+      merchant_id: m_c
+      card_network: mastercard
+      is_chargeback_eligible: true
+      is_settled: true
+      settled_at: '2026-02-11 03:00:00'
+      amount: 200.0
+    - transaction_id: c2
+      merchant_id: m_c
+      card_network: mastercard
+      is_chargeback_eligible: true
+      is_settled: true
+      settled_at: '2026-02-12 03:00:00'
+      amount: 200.0
+  - input: ref('stg_network__issuer_fraud_reports')
+    rows:
+    - report_id: r1
+      transaction_id: v1
+      card_network: visa
+      reported_at: '2026-03-06 08:00:00'
+  - input: ref('fct_chargebacks')
+    rows:
+    - chargeback_id: cb1
+      merchant_id: m_v
+      card_network: visa
+      chargeback_at: '2026-03-20 10:00:00'
+      is_fraud_reason: true
+      cb_amount: 100.0
+    - chargeback_id: cb2
+      merchant_id: m_c
+      card_network: mastercard
+      chargeback_at: '2026-03-15 10:00:00'
+      is_fraud_reason: false
+      cb_amount: 200.0
+  expect:
+    rows:
+    - merchant_id: m_v
+      card_network: visa
+      month_start: '2026-03-01'
+      settled_count: 4
+      previous_month_settled_count: 0
+      fraud_report_count: 1
+      dispute_count: 1
+      visa_vamp_ratio: 0.5
+      mc_ecm_ratio: null
+    - merchant_id: m_c
+      card_network: mastercard
+      month_start: '2026-02-01'
+      settled_count: 2
+      previous_month_settled_count: 0
+      fraud_report_count: 0
+      dispute_count: 0
+      visa_vamp_ratio: null
+      mc_ecm_ratio: null
+    - merchant_id: m_c
+      card_network: mastercard
+      month_start: '2026-03-01'
+      settled_count: 0
+      previous_month_settled_count: 2
+      fraud_report_count: 0
+      dispute_count: 1
+      visa_vamp_ratio: null
+      mc_ecm_ratio: 0.5
+- name: incremental_picks_out_of_order_events_and_duplicate_neighbors
+  description: 'Watermark em 12:00 com sobreposição de 6h. tx_late foi ingerida às 11:00 (fora de ordem): entra
+    (B1). tx_old (ingerida às 05:00) não entra. tx_dup_old é antiga, mas é vizinha de duplicidade de tx_new (mesmo
+    usuário, mesmo segundo): reabre para a flag não ficar velha (B4).'
+  model: fct_payment_attempts
+  overrides:
+    macros:
+      is_incremental: true
+  given:
+  - input: this
+    format: sql
+    rows: select 'tx_already_loaded' as transaction_id, timestamp '2026-03-01 12:00:00' as _tx_watermark, timestamp
+      '2026-03-01 12:00:00' as _eval_watermark, timestamp '2026-03-01 12:00:00' as _cb_watermark, timestamp '2026-03-01
+      12:00:00' as _enrichment_watermark, timestamp '2026-03-01 12:00:00' as _label_watermark, timestamp '2026-03-01
+      12:00:00' as _refund_watermark
+  - input: ref('stg_payments__transactions')
+    rows:
+    - transaction_id: tx_old
+      user_id: usr_a
+      transaction_at: '2026-03-01 05:00:00'
+      transaction_date: '2026-03-01'
+      amount: 100.0
+      status: approved
+      payment_method: credit_card
+      is_approved: true
+      is_chargeback_eligible: true
+      _ingested_at: '2026-03-01 05:00:00'
+    - transaction_id: tx_late
+      user_id: usr_b
+      transaction_at: '2026-03-01 10:59:00'
+      transaction_date: '2026-03-01'
+      amount: 100.0
+      status: approved
+      payment_method: credit_card
+      is_approved: true
+      is_chargeback_eligible: true
+      _ingested_at: '2026-03-01 11:00:00'
+    - transaction_id: tx_dup_old
+      user_id: usr_c
+      transaction_at: '2026-03-01 12:30:00'
+      transaction_date: '2026-03-01'
+      amount: 100.0
+      status: approved
+      payment_method: credit_card
+      is_approved: true
+      is_chargeback_eligible: true
+      _ingested_at: '2026-03-01 01:00:00'
+    - transaction_id: tx_new
+      user_id: usr_c
+      transaction_at: '2026-03-01 12:30:00'
+      transaction_date: '2026-03-01'
+      amount: 100.0
+      status: approved
+      payment_method: credit_card
+      is_approved: true
+      is_chargeback_eligible: true
+      _ingested_at: '2026-03-01 12:30:00'
+  - input: ref('stg_risk__evaluations')
+    rows: []
+  - input: ref('stg_acquirer__chargebacks')
+    rows: []
+  - input: ref('stg_payments__enrichment')
+    rows: []
+  - input: ref('fct_fraud_labels')
+    rows: []
+  - input: ref('stg_payments__refunds')
+    rows: []
+  - input: ref('int_risk__decision_per_transaction')
+    rows: []
+  - input: ref('int_chargebacks__per_transaction')
+    rows: []
+  - input: ref('int_transactions__duplicate_suspects')
+    rows:
+    - transaction_id: tx_dup_old
+      first_transaction_id_in_group: tx_dup_old
+      group_size: 2
+      is_duplicate_candidate: false
+    - transaction_id: tx_new
+      first_transaction_id_in_group: tx_dup_old
+      group_size: 2
+      is_duplicate_candidate: true
+  - input: ref('ref_issuer_response_codes')
+    rows: []
+  - input: ref('int_fraud_labels__per_transaction')
+    rows: []
+  expect:
+    rows:
+    - transaction_id: tx_late
+      is_duplicate_candidate: false
+    - transaction_id: tx_dup_old
+      is_duplicate_candidate: false
+    - transaction_id: tx_new
+      is_duplicate_candidate: true

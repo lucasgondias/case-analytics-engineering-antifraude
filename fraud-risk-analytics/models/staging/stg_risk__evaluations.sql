@@ -20,8 +20,11 @@ select
     *,
     -- rule_triggered mistura "regra disparada" com "desfecho de revisão manual".
     -- Separamos para não creditar ao motor automático uma decisão humana.
+    -- Camadas de decisão: motor automático, revisão interna e revisão de parceiro (ex.: bureau
+    -- antifraude com fila "em processo" e SLA de horas).
     case
         when rule_triggered like 'rule_manual_review%' then 'manual_review'
+        when rule_triggered like 'rule_partner_review%' then 'partner_review'
         else 'automatic'
     end as decision_source
 from typed

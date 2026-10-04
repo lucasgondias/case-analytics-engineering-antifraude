@@ -15,7 +15,6 @@ from pyspark.sql import functions as F
 from fraud_risk_spark import transformations as T
 
 SEEDS_DIR = Path(__file__).resolve().parents[2] / "seeds"
-AS_OF_DATE = date(2026, 10, 3)
 
 LATE_CHARGEBACK = {
     "chargeback_id": "cb_902",
@@ -44,7 +43,7 @@ def load_staging(spark: SparkSession, extra_chargebacks: list[dict] | None = Non
 def initial_load(spark: SparkSession) -> tuple[DataFrame, DataFrame, T.Watermarks]:
     tx, ev, cb = load_staging(spark)
     attempts = T.build_payment_attempts(tx, ev, cb, updated_at=datetime(2026, 10, 3, 6, 0))
-    cohort = T.build_cohort_aggregate(attempts, AS_OF_DATE)
+    cohort = T.build_cohort_aggregate(attempts)
     return attempts.cache(), cohort.cache(), T.current_watermarks(tx, ev, cb)
 
 
@@ -63,7 +62,7 @@ def incremental_run(
     new_attempts = T.merge_by_key(attempts, changed, ["transaction_id"]).cache()
 
     cohorts = T.affected_cohorts(changed)
-    new_cohort_rows = T.build_cohort_aggregate(new_attempts, AS_OF_DATE, cohorts)
+    new_cohort_rows = T.build_cohort_aggregate(new_attempts, cohorts)
     new_cohort = T.merge_by_key(cohort, new_cohort_rows, ["cohort_date", "payment_method"])
     return new_attempts, new_cohort.cache(), cohorts
 

@@ -49,3 +49,44 @@ sources:
         columns:
           - name: chargeback_id
             data_tests: [not_null, unique]
+
+  - name: raw_v2
+    description: >
+      Fontes propostas no contrato v2 (não existem no enunciado). Seeds com dados ILUSTRATIVOS para
+      demonstrar a modelagem: lojista, rótulo antecipado (TC40/SAFE), reembolso, alerta pré-disputa,
+      MED do Pix, desfecho de disputa e regras em shadow mode.
+    schema: raw
+    loaded_at_field: _ingested_at
+    tables:
+      - name: raw_payment_enrichment
+        description: Atributos do pagamento que o contrato v1 não traz (lojista, pedido, 3DS, código do emissor, liquidação).
+        columns:
+          - name: transaction_id
+            data_tests: [unique, not_null]
+      - name: raw_merchants
+        columns:
+          - name: merchant_id
+            data_tests: [unique, not_null]
+      - name: raw_issuer_fraud_reports
+        description: >
+          Relatórios de fraude do emissor à bandeira (Visa TC40 / Mastercard SAFE). Chegam dias após
+          a transação, antes do chargeback, e contam no VAMP mesmo sem chargeback.
+        config:
+          freshness:
+            warn_after: {count: 2, period: day}
+            error_after: {count: 4, period: day}
+        columns:
+          - name: report_id
+            data_tests: [unique, not_null]
+      - name: raw_refunds
+        columns:
+          - name: refund_id
+            data_tests: [unique, not_null]
+      - name: raw_dispute_alerts
+        description: Alertas pré-disputa (Verifi RDR / Order Insight, Ethoca). Resolvidos antes de virar chargeback.
+      - name: raw_pix_med_claims
+        description: Contestações de Pix via MED 2.0 (Bacen). Prazo do pagador de até 80 dias.
+      - name: raw_chargeback_outcomes
+        description: Desfecho da disputa (reapresentação, arbitragem). Base da perda líquida.
+      - name: raw_risk_rule_hits
+        description: Uma linha por regra avaliada, com versão e se está em shadow mode (avalia mas não decide).

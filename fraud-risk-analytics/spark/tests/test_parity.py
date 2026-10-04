@@ -6,13 +6,17 @@ Rodar a partir de fraud-risk-analytics/ depois de `dbt seed && dbt build`:
 
 from __future__ import annotations
 
+from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
 
 import duckdb
 import pytest
 
+from pyspark.sql import functions as F
+
 from fraud_risk_spark import pipeline as P
+from fraud_risk_spark import transformations as T
 from fraud_risk_spark.session import local_session
 
 DUCKDB_PATH = Path(__file__).resolve().parents[2] / "fraud_risk.duckdb"
@@ -43,8 +47,6 @@ COHORT_COLUMNS = [
     "chargeback_transaction_count",
     "chargeback_amount",
     "fraud_chargeback_amount",
-    "cohort_age_days",
-    "is_mature",
 ]
 
 
@@ -108,9 +110,12 @@ def test_late_chargeback_reopens_only_affected_cohort(spark, initial):
     assert [c.isoformat() for c in cohorts] == ["2026-03-01"]
 
     # Comparação em Python (não literal SQL): independente do fuso da máquina e da sessão Spark.
+    # Com a sobreposição de 6h (B1), outras transações recentes também são reprocessadas, de forma
+    # idempotente; a garantia é que a tx do chargeback novo está entre elas.
     initial_updated_at = attempts.agg({"_updated_at": "max"}).first()[0]
     changed = [r.transaction_id for r in new_attempts.collect() if r._updated_at > initial_updated_at]
-    assert changed == ["tx_1004"], "só a tx afetada é reprocessada"
+    assert "tx_1004" in changed, "a tx que recebeu o chargeback é reprocessada"
+    assert new_attempts.count() == attempts.count(), "merge por chave não duplica linhas"
 
     card = new_cohort.where("payment_method = 'credit_card'").first()
     assert card.chargeback_amount == Decimal("500.00")  # 150 (D+14) + 350 (D+120)
@@ -118,4 +123,34 @@ def test_late_chargeback_reopens_only_affected_cohort(spark, initial):
 
     pix_before = cohort.where("payment_method = 'pix'").first()
     pix_after = new_cohort.where("payment_method = 'pix'").first()
-    assert pix_after._updated_at == pix_before._updated_at, "partição não afetada não é reescrita"
+    assert (pix_after.approved_amount, pix_after.chargeback_amount) == (
+        pix_before.approved_amount,
+        pix_before.chargeback_amount,
+    ), "reprocessar a sobreposição não altera valores (idempotência)"
+
+
+def _tx_rows(spark, rows):
+    cols = ["transaction_id", "user_id", "transaction_at", "_ingested_at"]
+    return spark.createDataFrame(rows, cols).select(
+        "transaction_id",
+        "user_id",
+        F.to_timestamp("transaction_at").alias("transaction_at"),
+        F.to_timestamp("_ingested_at").alias("_ingested_at"),
+    )
+
+
+def test_incremental_picks_out_of_order_events_and_duplicate_neighbors(spark):
+    """B1 + B4, mesma fixture do unit test dbt `incremental_picks_out_of_order_...`."""
+    tx = _tx_rows(
+        spark,
+        [
+            ("tx_old", "usr_a", "2026-03-01 05:00:00", "2026-03-01 05:00:00"),
+            ("tx_late", "usr_b", "2026-03-01 10:59:00", "2026-03-01 11:00:00"),
+            ("tx_dup_old", "usr_c", "2026-03-01 12:30:00", "2026-03-01 01:00:00"),
+            ("tx_new", "usr_c", "2026-03-01 12:30:00", "2026-03-01 12:30:00"),
+        ],
+    )
+    empty = tx.select("transaction_id", "_ingested_at").limit(0)
+    wm = datetime(2026, 3, 1, 12, 0, 0)
+    ids = T.affected_transaction_ids(tx, empty, empty, T.Watermarks(wm, wm, wm))
+    assert sorted(r.transaction_id for r in ids.collect()) == ["tx_dup_old", "tx_late", "tx_new"]

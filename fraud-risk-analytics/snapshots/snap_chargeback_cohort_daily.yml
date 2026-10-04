@@ -1,0 +1,18 @@
+snapshots:
+  - name: snap_chargeback_cohort_daily
+    description: >
+      Histórico "como reportado" do agregado por safra (bitemporal: valor x quando soubemos).
+      Responde "por que o número de março mudou desde a reunião?": a safra amadurece e cada versão fica.
+    relation: ref('agg_chargeback_cohort_daily')
+    config:
+      schema: snapshots
+      unique_key: [cohort_date, payment_method]
+      strategy: check
+      check_cols:
+        - approved_count
+        - approved_amount
+        - chargeback_transaction_count
+        - chargeback_amount
+        - fraud_chargeback_amount
+        - fraud_labeled_count
+        - fraud_labeled_amount

@@ -1,0 +1,14 @@
+issuer_response_code,description,decline_type
+00,Aprovada,approved
+05,Do not honor,soft
+51,Saldo insuficiente,soft
+61,Excede limite de valor,soft
+65,Excede limite de quantidade,soft
+91,Emissor indisponivel,soft
+96,Falha do sistema,soft
+14,Cartao invalido,hard
+41,Cartao perdido,hard
+43,Cartao roubado,hard
+54,Cartao vencido,hard
+57,Transacao nao permitida ao portador,hard
+59,Suspeita de fraude,hard
