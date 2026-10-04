@@ -18,7 +18,7 @@ pairs as (
             a.user_id = b.user_id
             and a.amount = b.amount
             and a.payment_method = b.payment_method
-            and abs(datediff('second', a.transaction_at, b.transaction_at)) <= 60
+            and abs({{ dbt.datediff("a.transaction_at", "b.transaction_at", "second") }}) <= 60
     group by a.transaction_id
     having count(*) > 1
 )

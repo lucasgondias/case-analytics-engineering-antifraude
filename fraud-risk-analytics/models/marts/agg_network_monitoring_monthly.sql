@@ -125,8 +125,8 @@ ratios as (
         case
             when month_start = date_trunc('month', {{ as_of_date() }})
                 then
-                    cast(datediff('day', month_start, cast(month_start + interval 1 month as date)) as double)
-                    / greatest(datediff('day', month_start, {{ as_of_date() }}) + 1, 1)
+                    cast({{ dbt.datediff("month_start", "cast(month_start + interval 1 month as date)", "day") }} as double)
+                    / greatest({{ dbt.datediff("month_start", as_of_date(), "day") }} + 1, 1)
             else 1.0
         end as projection_factor
     from monthly

@@ -32,9 +32,9 @@ select
     chargebacks.reason_category,
     chargebacks.is_fraud_reason,
     chargebacks.cb_amount,
-    datediff('day', transactions.transaction_at, chargebacks.chargeback_at) as days_to_chargeback,
+    {{ dbt.datediff("transactions.transaction_at", "chargebacks.chargeback_at", "day") }} as days_to_chargeback,
     coalesce(
-        datediff('day', transactions.transaction_at, chargebacks.chargeback_at)
+        {{ dbt.datediff("transactions.transaction_at", "chargebacks.chargeback_at", "day") }}
         > {{ var('maturity_window_days') }},
         false
     ) as is_beyond_maturity_window,

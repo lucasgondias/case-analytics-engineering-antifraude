@@ -2,7 +2,8 @@
 dialect = duckdb
 templater = dbt
 max_line_length = 110
-exclude_rules = ST06, AM04, RF04, RF01, RF02, ST03
+exclude_rules = ST06, AM04, RF04, RF01, RF02, ST03, LT05
+# LT05: o tamanho da linha é medido depois da expansão dos macros cross-database (dbt.datediff etc.)
 # RF01/RF02/ST03: falsos positivos do parser duckdb com FILTER (WHERE) e IS DISTINCT FROM
 ignore = parsing
 

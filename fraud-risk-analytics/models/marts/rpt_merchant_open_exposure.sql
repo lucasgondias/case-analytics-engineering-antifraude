@@ -12,7 +12,7 @@ with card_sales as (
         merchant_id,
         amount,
         chargeback_amount,
-        datediff('day', cohort_date, {{ as_of_date() }}) as age_days,
+        {{ dbt.datediff("cohort_date", as_of_date(), "day") }} as age_days,
         coalesce(payout_term_days, 30) as payout_term_days
     from {{ ref('fct_payment_attempts') }}
     where is_approved and is_chargeback_eligible and merchant_id is not null

@@ -4,6 +4,5 @@
     reentrega). O MERGE por chave torna o reprocessamento da sobreposição idempotente.
 -#}
 {% macro incremental_since(watermark_column) -%}
-    (select max({{ watermark_column }}) from {{ this }})
-        - to_hours({{ var('incremental_lookback_hours') }})
+    {{ dbt.dateadd("hour", -1 * var('incremental_lookback_hours'), "(select max(" ~ watermark_column ~ ") from " ~ this ~ ")") }}
 {%- endmacro %}

@@ -46,7 +46,7 @@ with
         inner join {{ ref('stg_payments__transactions') }} as older
             on
                 newer.user_id = older.user_id
-                and abs(datediff('second', newer.transaction_at, older.transaction_at))
+                and abs({{ dbt.datediff("newer.transaction_at", "older.transaction_at", "second") }})
                 <= {{ var('duplicate_window_seconds') }}
         where newer.transaction_id in (select ck.transaction_id from changed_keys as ck)
     ),
@@ -165,7 +165,7 @@ select
     coalesce(chargebacks.chargeback_amount, 0) as chargeback_amount,
     coalesce(chargebacks.fraud_chargeback_amount, 0) as fraud_chargeback_amount,
     chargebacks.first_chargeback_at,
-    datediff('day', transactions.transaction_at, chargebacks.first_chargeback_at)
+    {{ dbt.datediff("transactions.transaction_at", "chargebacks.first_chargeback_at", "day") }}
         as days_to_first_chargeback,
 
     -- desfecho: rótulo de fraude (primeira evidência de qualquer fonte)
@@ -173,7 +173,7 @@ select
     fraud_labels.first_fraud_label_at,
     fraud_labels.first_fraud_label_source,
     fraud_labels.fraud_label_sources,
-    datediff('day', transactions.transaction_at, fraud_labels.first_fraud_label_at)
+    {{ dbt.datediff("transactions.transaction_at", "fraud_labels.first_fraud_label_at", "day") }}
         as days_to_fraud_label,
 
     -- desfecho: reembolso

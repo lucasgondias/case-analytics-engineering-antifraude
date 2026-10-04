@@ -48,7 +48,7 @@ select
     merchant_months.merchant_id,
     merchants.segment,
     merchants.mcc,
-    datediff('day', merchants.merchant_created_at, merchant_months.month_start) as merchant_age_days,
+    {{ dbt.datediff("merchants.merchant_created_at", "merchant_months.month_start", "day") }} as merchant_age_days,
     merchant_months.month_start,
     coalesce(cb.chargeback_count, 0) as chargeback_count,
     coalesce(cb.gross_chargeback_amount, 0) as gross_chargeback_amount,

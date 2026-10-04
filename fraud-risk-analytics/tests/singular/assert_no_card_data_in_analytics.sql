@@ -7,7 +7,4 @@ select
 from information_schema.columns
 where
     table_schema in ('raw', 'staging', 'intermediate', 'marts', 'monitoring')
-    and regexp_matches(
-        lower(column_name),
-        '^(pan|card_number|cardnumber|cvv|cvc|card_cvv|expiry|expiration_date|card_expiry)$'
-    )
+    and {{ regex_match('lower(column_name)', '^(pan|card_number|cardnumber|cvv|cvc|card_cvv|expiry|expiration_date|card_expiry)$') }}

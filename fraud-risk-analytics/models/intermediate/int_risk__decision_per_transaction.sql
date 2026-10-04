@@ -16,8 +16,9 @@ joined as (
     select
         evaluations.*,
         transactions.transaction_at,
-        evaluations.evaluated_at <= transactions.transaction_at
-        + to_seconds({{ var('clock_skew_tolerance_seconds') }}) as is_pre_authorization
+        evaluations.evaluated_at
+        <= {{ dbt.dateadd("second", var('clock_skew_tolerance_seconds'), "transactions.transaction_at") }}
+            as is_pre_authorization
     from evaluations
     inner join transactions on evaluations.transaction_id = transactions.transaction_id
 )

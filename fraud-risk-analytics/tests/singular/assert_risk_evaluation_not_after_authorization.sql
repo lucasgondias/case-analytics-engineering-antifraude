@@ -7,4 +7,4 @@ select
 from {{ ref('stg_payments__transactions') }} as t
 inner join {{ ref('int_risk__decision_per_transaction') }} as r
     on t.transaction_id = r.transaction_id
-where r.evaluated_at > t.transaction_at + to_seconds({{ var('clock_skew_tolerance_seconds') }})
+where r.evaluated_at > {{ dbt.dateadd("second", var('clock_skew_tolerance_seconds'), "t.transaction_at") }}

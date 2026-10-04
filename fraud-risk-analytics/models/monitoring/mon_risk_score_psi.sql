@@ -23,7 +23,7 @@ days as (
 ),
 
 buckets as (
-    select range as score_bucket from range(0, 10)
+    select score_bucket from (values (0), (1), (2), (3), (4), (5), (6), (7), (8), (9)) as b (score_bucket)
 ),
 
 grid as (

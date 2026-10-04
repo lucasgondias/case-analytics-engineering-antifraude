@@ -3,7 +3,7 @@
 Protótipo executável do case de Analytics Engineering, Anti-Fraud & Risk.
 Projeto dbt sobre DuckDB, com os dados do enunciado como Bronze, o fluxo staging → intermediate → marts → camada semântica, testes que pegam as armadilhas do dado e uma simulação de chargeback tardio.
 
-Stack neutra: o SQL é ANSI com poucas extensões (`qualify`, `filter (where)`) e roda igual em BigQuery, Snowflake e Databricks SQL trocando o adapter.
+Portabilidade: funções que diferem entre bancos ficam em macros (`dbt.datediff`, `dbt.dateadd`, `dbt.listagg` e `macros/cross_db.sql`); o restante usa sintaxe comum a DuckDB e Databricks SQL. Validado em DuckDB; o alvo de produção é dbt-databricks.
 
 ## Como rodar
 

@@ -52,7 +52,21 @@ attempt_totals as (
 
 select
     attempt_totals.cohort_date as transaction_date,
-    attempt_totals.* exclude (cohort_date),
+    attempt_totals.payment_method,
+    attempt_totals.attempt_count,
+    attempt_totals.approved_count,
+    attempt_totals.declined_by_risk_count,
+    attempt_totals.declined_by_manual_review_count,
+    attempt_totals.declined_by_issuer_count,
+    attempt_totals.issuer_soft_decline_count,
+    attempt_totals.issuer_hard_decline_count,
+    attempt_totals.technical_error_count,
+    attempt_totals.declined_unknown_count,
+    attempt_totals.manual_review_count,
+    attempt_totals.duplicate_candidate_count,
+    attempt_totals.approved_without_risk_evaluation_count,
+    attempt_totals.attempted_amount,
+    attempt_totals.approved_amount,
     coalesce(order_totals.order_count, 0) as order_count,
     coalesce(order_totals.approved_order_count, 0) as approved_order_count
 from attempt_totals
