@@ -6,7 +6,6 @@ Rodar a partir de fraud-risk-analytics/ depois de `dbt seed && dbt build`:
 
 from __future__ import annotations
 
-from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
 
@@ -151,6 +150,8 @@ def test_incremental_picks_out_of_order_events_and_duplicate_neighbors(spark):
         ],
     )
     empty = tx.select("transaction_id", "_ingested_at").limit(0)
-    wm = datetime(2026, 3, 1, 12, 0, 0)
+    # Watermark obtido pelo próprio Spark (como no pipeline, via collect): um datetime Python
+    # ingênuo seria interpretado no fuso da máquina e divergiria do fuso da sessão.
+    wm = spark.sql("select timestamp'2026-03-01 12:00:00' as wm").first().wm
     ids = T.affected_transaction_ids(tx, empty, empty, T.Watermarks(wm, wm, wm))
     assert sorted(r.transaction_id for r in ids.collect()) == ["tx_dup_old", "tx_late", "tx_new"]

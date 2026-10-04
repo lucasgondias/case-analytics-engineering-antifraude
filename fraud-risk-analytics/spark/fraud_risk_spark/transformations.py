@@ -25,7 +25,11 @@ INCREMENTAL_LOOKBACK_HOURS = 6
 
 @dataclass(frozen=True)
 class Watermarks:
-    """Maior _ingested_at já processado por fonte (gravado no próprio fato)."""
+    """Maior _ingested_at já processado por fonte (gravado no próprio fato).
+
+    Sempre obtidos do Spark (collect), nunca de datetime Python montado à mão: datetime ingênuo é
+    interpretado no fuso da máquina e diverge do fuso da sessão Spark.
+    """
 
     transactions: datetime
     evaluations: datetime
