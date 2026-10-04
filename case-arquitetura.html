@@ -455,6 +455,7 @@ body.presenting #slide-hud {
 <div class="etapa-card">
   <div class="etapa-card-header"><span class="etapa-card-num">5</span><span class="etapa-card-title">Gold: fatos e agregados</span></div>
   <dl>
+    <dt>Modelagem</dt><dd><strong>Star schema</strong> (Kimball): um fato por processo de negócio, cada um com seu grão, e dimensões compartilhadas <code>dim_merchant</code>, <code>dim_date</code> e <code>dim_risk_rule</code>. Atributos de poucos valores (meio de pagamento, bandeira, país) ficam no próprio fato. Tabelas largas só no consumo, derivadas da estrela.</dd>
     <dt>Fatos</dt><dd><code>fct_payment_attempts</code> (incremental, MERGE por <code>transaction_id</code>, contrato aplicado), <code>fct_chargebacks</code> (evento, perda líquida e não recuperada), <code>fct_fraud_labels</code> (label store).</dd>
     <dt>Agregados</dt><dd>Safra (<code>agg_chargeback_cohort_daily</code>, incremental por safra afetada), aprovação diária, ratio das bandeiras por lojista, perda por lojista, backtest de regras, performance por regra.</dd>
     <dt>Leitura</dt><dd>Views que dependem de "hoje": maturidade da safra e exposição do lojista. Snapshot "como reportado" do agregado por safra.</dd>
@@ -579,6 +580,7 @@ cohort_aggregate.write.format(<span class="s">"delta"</span>).mode(<span class="
 <tr><td>Silver</td><td><code>int_chargebacks__per_transaction</code></td><td>transação com CB</td><td>view</td></tr>
 <tr><td>Silver</td><td><code>int_transactions__duplicate_suspects</code></td><td>transação suspeita</td><td>view</td></tr>
 <tr><td>Silver</td><td><code>int_fraud_labels__per_transaction</code></td><td>transação rotulada</td><td>view</td></tr>
+<tr><td>Gold</td><td><code>dim_merchant</code> · <code>dim_date</code> · <code>dim_risk_rule</code></td><td>lojista · dia · regra e versão</td><td>table (dimensões conformadas)</td></tr>
 <tr><td>Gold</td><td><code>fct_payment_attempts</code></td><td>tentativa</td><td>incremental, contrato</td></tr>
 <tr><td>Gold</td><td><code>fct_chargebacks</code></td><td>evento de CB</td><td>table</td></tr>
 <tr><td>Gold</td><td><code>fct_fraud_labels</code></td><td>evidência</td><td>table</td></tr>
