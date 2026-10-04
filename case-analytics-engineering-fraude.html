@@ -406,9 +406,9 @@ body.presenting #slide-hud {
 <tbody>
 <tr><td><strong>Operação em mais de um país</strong></td><td><code>country</code> e <code>currency</code> no contrato; safra no fuso do país; prazos de disputa por país</td></tr>
 <tr><td><strong>O chargeback é debitado do saldo do lojista</strong></td><td>Perda em três níveis: bruta, líquida (após disputa) e <strong>não recuperada pela plataforma</strong>. Dimensão lojista em todo o modelo</td></tr>
-<tr><td><strong>Repasse antecipado ao lojista</strong> (D+2, D+14, D+30) e parcelamento</td><td><strong>Exposição</strong>: dinheiro já repassado que ainda pode ser contestado por até 120 dias</td></tr>
+<tr><td><strong>Repasse do cartão ao lojista</strong> em D+2, D+14 ou D+30</td><td><strong>Exposição</strong>: dinheiro já repassado que ainda pode ser contestado por até 120 dias</td></tr>
 <tr><td><strong>Antifraude em camadas</strong>: motor automático, revisão manual e parceiro antifraude</td><td><code>decision_source</code> (motor, revisão interna, parceiro) e recusa separada por origem</td></tr>
-<tr><td><strong>Retentativa automática</strong> de pagamento recusado</td><td>Aprovação por <strong>pedido</strong> ao lado da aprovação por tentativa</td></tr>
+<tr><td><strong>Comprador pode tentar de novo</strong> ou gerar novo pedido após uma recusa</td><td>Aprovação por <strong>pedido</strong> ao lado da aprovação por tentativa</td></tr>
 <tr><td><strong>Pix com peso relevante</strong></td><td>Pix fora do denominador do CB rate de cartão, com perda própria via MED 2.0</td></tr>
 </tbody>
 </table>
@@ -426,7 +426,7 @@ body.presenting #slide-hud {
 <thead><tr><th>#</th><th>Evidência</th><th>Leitura de risco</th><th>Tratamento</th><th>Severidade</th></tr></thead>
 <tbody>
 <tr class="danger"><td>1</td><td><code>tx_1005</code> aprovada <strong>sem avaliação</strong> de risco</td><td>Motor aprovou após falha ou timeout, ou o feed de avaliações perdeu o evento. Aprovação sem análise</td><td>Flag e monitor P1 acima de 1% no dia</td><td><span class="badge badge-err">P1</span></td></tr>
-<tr class="danger"><td>2</td><td><code>tx_1004</code> e <code>tx_1005</code>: mesmo usuário, valor, método e segundo</td><td>Reentrega do gateway (dupla contagem) ou cobrança em dobro (chargeback quase certo)</td><td>Suspeita marcada pela chave natural (60s). Sinaliza, não apaga</td><td><span class="badge badge-warn">P2</span></td></tr>
+<tr class="danger"><td>2</td><td><code>tx_1004</code> e <code>tx_1005</code>: mesmo usuário, valor, método e segundo</td><td>Reentrega do gateway (dupla contagem) ou cobrança em dobro (risco de reembolso ou chargeback)</td><td>Suspeita marcada pela chave natural (60s). Sinaliza, não apaga</td><td><span class="badge badge-warn">P2</span></td></tr>
 <tr><td>3</td><td><code>tx_1003</code> é <strong>Pix</strong></td><td>Pix não tem chargeback. No denominador, derruba o CB rate pela metade</td><td><code>is_chargeback_eligible</code>; perda do Pix via MED</td><td><span class="badge badge-info">Definição</span></td></tr>
 <tr><td>4</td><td><code>declined</code> não diz quem recusou</td><td>Sem a origem, não dá para medir o impacto das regras na conversão</td><td><code>decline_source</code> e recusa soft/hard do emissor</td><td><span class="badge badge-info">Modelagem</span></td></tr>
 <tr><td>5</td><td><code>rule_manual_review_pass</code></td><td>Mistura regra com decisão humana: infla a performance do motor</td><td><code>decision_source</code></td><td><span class="badge badge-info">Modelagem</span></td></tr>
@@ -471,7 +471,7 @@ body.presenting #slide-hud {
 <table>
 <thead><tr><th>Regra</th><th>Implementação</th><th>Detalhe que o texto não diz</th></tr></thead>
 <tbody>
-<tr><td>Aprovação: tentadas incluem approved, declined e error</td><td><code>approval_rate</code> literal</td><td>Ao lado: aprovação por pedido (66,7% no cartão contra 75% por tentativa: a cobrança em dobro infla a aprovação) e recusa por origem</td></tr>
+<tr><td>Aprovação: tentadas incluem approved, declined e error</td><td><code>approval_rate</code> literal</td><td>Ao lado: aprovação por pedido (no exemplo ilustrativo de pedido, 66,7% no cartão contra 75% por tentativa: a duplicata infla a aprovação) e recusa por origem</td></tr>
 <tr><td>CB rate financeiro e por quantidade, por safra</td><td>Razão de somas sobre <code>agg_chargeback_cohort_daily</code></td><td>Quantidade conta <strong>transações distintas</strong>; chargeback em transação recusada vira alerta</td></tr>
 <tr><td>Safra = data da transação</td><td><code>cohort_date</code> de <code>transaction_at</code>, garantido por teste unitário</td><td>O raw não tem <code>transaction_date</code>: depende do fuso. Diária no fato, mensal na camada semântica</td></tr>
 <tr><td>Só aprovadas no denominador</td><td>Filtro <code>is_approved</code></td><td>Pix aprovado entra pelo texto; a variante de cartão fica ao lado</td></tr>
@@ -501,13 +501,13 @@ body.presenting #slide-hud {
 </table>
 </div>
 <div class="card-grid">
-  <div class="card"><div class="card-kicker">Visa VAMP</div><h4>(TC40 + TC15) / TC05</h4><p>Fraude reportada e disputas de cartão não presente sobre liquidadas do mês. Fraude com chargeback conta duas vezes. Limite do lojista: <strong>1,5%</strong> desde abril de 2026 (LATAM incluída), com piso de 1.500 liquidadas.</p></div>
+  <div class="card"><div class="card-kicker">Visa VAMP</div><h4>(TC40 + TC15) / TC05</h4><p>Fraude reportada e disputas de cartão não presente sobre liquidadas do mês. Fraude com chargeback conta duas vezes. Na América Latina e Caribe, o lojista entra no programa com <strong>1,5%</strong> e pelo menos <strong>1.500 casos</strong> (fraude reportada + disputas) no mês. Para o Brasil, a Visa anunciará um programa próprio; os limites ficam parametrizados.</p></div>
   <div class="card"><div class="card-kicker">Mastercard ECM</div><h4>Chargebacks / liquidadas do mês anterior</h4><p>Faixa a partir de <strong>1,5% e 100 chargebacks</strong>; o programa de fraude (EFM) olha fraude em bps do volume, a partir de 50 bps.</p></div>
   <div class="card"><div class="card-kicker">Projeção</div><h4>Alerta no dia 10, não no dia 30</h4><p>Projeção intramês pelo ritmo até hoje e alerta preventivo a 75% do limite. Os limites ficam parametrizados no projeto, porque as bandeiras mudam as regras.</p></div>
 </div>
 <div class="callout">
   <div class="callout-label">No dado do case</div>
-  <p>O lojista ilustrativo da tx_1001 tem 1 liquidada, 1 TC40 e 1 chargeback: <strong>ratio de 200%</strong>, mas <strong>abaixo do piso de volume</strong>, então fora do programa. Sem o piso, o painel acusaria um falso alarme.</p>
+  <p>O lojista ilustrativo da tx_1001 tem 1 liquidada, 1 TC40 e 1 chargeback: <strong>ratio de 200%</strong>, mas <strong>abaixo do piso de 1.500 casos</strong>, então fora do programa. Sem o piso, o painel acusaria um falso alarme.</p>
 </div>
 </div>
 </section>
@@ -648,8 +648,8 @@ body.presenting #slide-hud {
     <span class="k">else</span> <span class="s">'issuer_or_acquirer'</span>                  <span class="c">-- + issuer_decline_type: soft (retentável) | hard</span>
 <span class="k">end as</span> decline_source</code></pre>
 <div class="callout">
-  <div class="callout-label">Rótulo antecipado no dado do case</div>
-  <p>A <code>tx_1001</code> recebe o relatório de fraude do emissor em <strong>D+4</strong> e o chargeback em <strong>D+14</strong>. Com o label store, a safra conhece a fraude 10 dias antes. E a regra em shadow <code>rule_new_device_high_ticket</code> teria barrado essa fraude (R$ 150) sem recusar nenhum cliente bom: candidata a ser ligada.</p>
+  <div class="callout-label">Rótulo antecipado (exemplo ilustrativo)</div>
+  <p>Exemplo ilustrativo (dado em <code>seeds/v2</code>): a <code>tx_1001</code> recebe o relatório de fraude do emissor em <strong>D+4</strong>; o chargeback real do case chega em <strong>D+14</strong>. Com o label store, a fraude é conhecida na primeira evidência. A regra em shadow <code>rule_new_device_high_ticket</code> teria barrado essa fraude (R$ 150): é esse tipo de evidência, acumulada em volume, que o backtest usa para decidir se uma regra deve passar a valer.</p>
 </div>
 </div>
 </section>

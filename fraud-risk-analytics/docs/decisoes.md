@@ -25,7 +25,7 @@
 - Moeda por transação (`currency`); comparações entre países só após conversão pela taxa da data.
 - Pix não tem chargeback: fica fora do denominador do CB rate de cartão, mas tem perda própria via MED 2.0 (prazo do pagador de até 80 dias desde set/2026).
 - O status `error` entra no denominador da aprovação porque o contrato manda. A aprovação por pedido é a métrica auxiliar.
-- Limites das bandeiras parametrizados em `dbt_project.yml` (`network_programs`): VAMP lojista 1,5% (LATAM, desde abr/2026, piso de 1.500 liquidadas); Mastercard ECM 1,5% com 100+ chargebacks; EFM 50 bps.
+- Limites das bandeiras parametrizados em `dbt_project.yml` (`network_programs`): VAMP lojista 1,5% na América Latina e Caribe, com piso de 1.500 casos de fraude reportada + disputas no mês (Visa, VAMP fact sheet 2025; o Brasil terá programa próprio, ainda não anunciado); Mastercard ECM 1,5% com 100+ chargebacks; EFM 50 bps.
 
 ## Perguntas em aberto para o time de Risco
 

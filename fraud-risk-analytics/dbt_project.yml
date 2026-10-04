@@ -27,8 +27,9 @@ vars:
   chargeback_eligible_methods: ["credit_card", "debit_card"]
   # Programas de monitoramento das bandeiras (referência 2026; revisar quando as regras mudarem).
   network_programs:
-    visa_vamp_merchant_ratio: 0.015        # VAMP lojista (LATAM) desde abr/2026
-    visa_vamp_min_settled_txn: 1500        # piso de volume do VAMP
+    # Fonte: Visa, VAMP fact sheet 2025. LAC: 1,5% desde jun/2025; Brasil com programa próprio a anunciar.
+    visa_vamp_merchant_ratio: 0.015        # VAMP lojista (LAC)
+    visa_vamp_min_fraud_dispute_count: 1500  # piso: fraude reportada + disputas no mês
     visa_vamp_enumeration_ratio: 0.20      # teste de cartão
     mc_ecm_ratio: 0.015                    # Mastercard ECM
     mc_ecm_min_chargebacks: 100

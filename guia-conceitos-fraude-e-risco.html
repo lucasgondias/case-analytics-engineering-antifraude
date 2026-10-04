@@ -494,7 +494,7 @@ body.presenting #slide-hud {
 
 <div class="callout red">
   <div class="callout-label">Além do valor contestado</div>
-  <p>Cada chargeback costuma vir com <strong>tarifa</strong> da adquirente, ganhe ou perca a disputa. E as bandeiras têm <strong>programas de monitoramento</strong> por lojista. Na Visa, o <strong>VAMP</strong> soma fraude reportada pelo emissor (TC40) e disputas, sobre as transações liquidadas do mês: o limite do lojista é <strong>1,5%</strong> desde abril de 2026 (América Latina incluída), com cobrança por disputa acima do limite. Na Mastercard, o <strong>ECM</strong> começa em 1,5% e 100 chargebacks no mês. Acima disso vêm multas, plano de ação e, no limite, o descredenciamento. Isso faz da taxa de chargeback uma métrica de sobrevivência do negócio, e não só de perda.</p>
+  <p>Cada chargeback costuma vir com <strong>tarifa</strong> da adquirente, ganhe ou perca a disputa. E as bandeiras têm <strong>programas de monitoramento</strong> por lojista. Na Visa, o <strong>VAMP</strong> soma fraude reportada pelo emissor (TC40) e disputas, sobre as transações liquidadas do mês: na América Latina e Caribe, o lojista entra no programa com <strong>1,5%</strong> e pelo menos 1.500 casos no mês (o Brasil terá programa próprio, ainda não anunciado pela Visa). Na Mastercard, o <strong>ECM</strong> começa em 1,5% e 100 chargebacks no mês. Acima disso vêm multas, plano de ação e, no limite, o descredenciamento. Isso faz da taxa de chargeback uma métrica de sobrevivência do negócio, e não só de perda.</p>
 </div>
 </section>
 
@@ -586,7 +586,7 @@ body.presenting #slide-hud {
 <dt>Por que safra e não data do chargeback?</dt><dd>Se contar pela data de chegada, o mês com mais fraude parece bom (os chargebacks ainda não chegaram) e o mês seguinte parece ruim (recebe os chargebacks atrasados). A safra liga a perda à decisão que a causou.</dd>
 <dt>Rótulo antecipado (TC40 / SAFE)</dt><dd>Relatório de fraude que o emissor envia à bandeira (Visa TC40, Mastercard SAFE) dias depois da compra, antes do chargeback. Usar a primeira evidência de fraude, venha de onde vier, encurta a espera para fechar uma safra. No case, a tx_1001 tem o relatório em D+4 e o chargeback em D+14.</dd>
 <dt>As duas taxas de chargeback</dt><dd><strong>Por safra</strong>: chargebacks atribuídos à data da venda sobre as aprovadas da safra, para avaliar o motor. <strong>Das bandeiras</strong>: fraude reportada e disputas notificadas no mês sobre liquidadas do mês, por lojista, para evitar multa. São perguntas diferentes e as duas são necessárias.</dd>
-<dt>Maturação</dt><dd>Quanto da perda final de uma safra já chegou. Uma safra de 10 dias pode ter só 20% dos seus chargebacks. Comparar safra imatura com madura é o erro mais comum em painel de risco.</dd>
+<dt>Maturação</dt><dd>Quanto da perda final de uma safra já chegou. Uma safra de poucos dias ainda não recebeu a maior parte dos seus chargebacks. Comparar safra imatura com madura é o erro mais comum em painel de risco.</dd>
 <dt>Curva de maturação</dt><dd>Percentual acumulado de chargebacks por dia desde a venda (D+15, D+30, D+60...). Com ela dá para <strong>projetar</strong> a perda final de uma safra jovem: observado dividido pelo percentual esperado.</dd>
 <dt>Perda bruta x perda líquida</dt><dd><strong>Bruta</strong>: soma do valor contestado. <strong>Líquida</strong>: bruta menos o que foi recuperado em disputa. A perda líquida é o custo real, mas exige o dado do desfecho da disputa.</dd>
 </dl>

@@ -443,6 +443,7 @@ unit_tests:
       fraud_report_count: 1
       dispute_count: 1
       visa_vamp_ratio: 0.5
+      visa_vamp_status: abaixo_do_piso_de_volume
       mc_ecm_ratio: null
     - merchant_id: m_c
       card_network: mastercard
@@ -452,6 +453,7 @@ unit_tests:
       fraud_report_count: 0
       dispute_count: 0
       visa_vamp_ratio: null
+      visa_vamp_status: null
       mc_ecm_ratio: null
     - merchant_id: m_c
       card_network: mastercard
@@ -461,6 +463,7 @@ unit_tests:
       fraud_report_count: 0
       dispute_count: 1
       visa_vamp_ratio: null
+      visa_vamp_status: null
       mc_ecm_ratio: 0.5
 - name: incremental_picks_out_of_order_events_and_duplicate_neighbors
   description: 'Watermark em 12:00 com sobreposição de 6h. tx_late foi ingerida às 11:00 (fora de ordem): entra

@@ -3,7 +3,8 @@
 --   safra   -> "o motor errou nas vendas de março?" (atribuído à data da venda)
 --   bandeira -> "vamos tomar multa ou ser descredenciados este mês?" (atribuído à data da notificação)
 -- Regras (referência 2026, parametrizadas em dbt_project.yml > network_programs):
---   Visa VAMP  = (fraude reportada TC40 + disputas TC15) / transações liquidadas do mês (cartão não presente)
+--   Visa VAMP  = (fraude reportada TC40 + disputas TC15) / transações liquidadas do mês (cartão não presente);
+--                o lojista só entra no programa com 1.500+ casos (TC40 + TC15) no mês
 --   MC ECM     = chargebacks do mês / transações do MÊS ANTERIOR, com mínimo de chargebacks
 --   MC EFM     = valor de chargeback de fraude / valor transacionado, em bps
 {%- set p = var('network_programs') %}
@@ -137,7 +138,9 @@ select
     round(dispute_count * projection_factor) as projected_dispute_count,
     round(settled_count * projection_factor) as projected_settled_count,
     case
-        when card_network = 'visa' and settled_count * projection_factor < {{ p.visa_vamp_min_settled_txn }}
+        when
+            card_network = 'visa'
+            and (fraud_report_count + dispute_count) * projection_factor < {{ p.visa_vamp_min_fraud_dispute_count }}
             then 'abaixo_do_piso_de_volume'
         when visa_vamp_ratio >= {{ p.visa_vamp_merchant_ratio }} then 'acima_do_limite'
         when
