@@ -1,0 +1,136 @@
+version: 2
+
+groups:
+  - name: anti_fraud_risk
+    owner:
+      name: Data & Analytics Engineering - Anti-Fraud & Risk
+      email: data-risk@example.com
+
+models:
+  - name: fct_payment_attempts
+    description: >
+      Fonte única da verdade de tentativas de pagamento. 1 linha por transaction_id com a decisão
+      de risco vigente na autorização, o desfecho de chargeback (label tardio) e flags de qualidade.
+      Flags nunca filtram linhas: a métrica oficial segue o contrato, as flags permitem auditar.
+    group: anti_fraud_risk
+    access: public
+    config:
+      contract:
+        enforced: true
+      meta:
+        owner: data-risk
+        tier: 1
+        sla: "D-0 até 07:00 BRT; chargebacks atualizam safras afetadas a cada run"
+        pii: [user_id]
+    columns:
+      - name: transaction_id
+        data_type: varchar
+        constraints: [{type: not_null}, {type: primary_key}]
+        data_tests: [unique, not_null]
+      - name: user_id
+        data_type: varchar
+        meta: {pii: true}
+      - name: transaction_at
+        data_type: timestamp
+      - name: cohort_date
+        data_type: date
+        description: Safra = data local da transação. Chargebacks são atribuídos aqui, nunca em chargeback_at.
+        data_tests: [not_null]
+      - name: amount
+        data_type: decimal(18,2)
+      - name: status
+        data_type: varchar
+      - name: payment_method
+        data_type: varchar
+      - name: is_chargeback_eligible
+        data_type: boolean
+        description: Cartão. Pix tem MED, não chargeback; não entra no denominador do CB rate de cartão.
+      - name: is_approved
+        data_type: boolean
+      - name: decline_source
+        data_type: varchar
+        description: risk_engine | issuer_or_acquirer | technical_error | unknown_no_risk_evaluation | null (aprovada).
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["risk_engine", "issuer_or_acquirer", "technical_error", "unknown_no_risk_evaluation"]
+      - name: evaluation_id
+        data_type: varchar
+      - name: risk_score
+        data_type: integer
+      - name: risk_action
+        data_type: varchar
+      - name: rule_triggered
+        data_type: varchar
+      - name: decision_source
+        data_type: varchar
+        description: automatic | manual_review. Separa mérito do motor de mérito da revisão humana.
+      - name: evaluation_count
+        data_type: bigint
+      - name: has_chargeback
+        data_type: boolean
+      - name: has_fraud_chargeback
+        data_type: boolean
+      - name: chargeback_count
+        data_type: bigint
+      - name: chargeback_amount
+        data_type: decimal(38,2)
+      - name: fraud_chargeback_amount
+        data_type: decimal(38,2)
+      - name: first_chargeback_at
+        data_type: timestamp
+      - name: days_to_first_chargeback
+        data_type: bigint
+      - name: is_approved_without_risk_evaluation
+        data_type: boolean
+        description: Aprovada sem avaliação de risco = fail-open do motor ou perda de evento no feed.
+      - name: is_approved_despite_risk_reject
+        data_type: boolean
+      - name: is_duplicate_candidate
+        data_type: boolean
+      - name: duplicate_of_transaction_id
+        data_type: varchar
+      - name: _tx_watermark
+        data_type: timestamp
+      - name: _eval_watermark
+        data_type: timestamp
+      - name: _cb_watermark
+        data_type: timestamp
+      - name: _updated_at
+        data_type: timestamp with time zone
+
+  - name: fct_chargebacks
+    description: 1 linha por evento de chargeback, com safra da transação original e lag de notificação.
+    group: anti_fraud_risk
+    access: public
+    columns:
+      - name: chargeback_id
+        data_tests: [unique, not_null]
+      - name: is_orphan
+        description: Chargeback sem transação conhecida (late-arriving ou falha de ingestão de transações).
+
+  - name: agg_chargeback_cohort_daily
+    description: >
+      Safra x método. Só numeradores e denominadores aditivos; taxas na camada semântica.
+      Incremental por safra afetada.
+    group: anti_fraud_risk
+    access: public
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [cohort_date, payment_method]
+
+  - name: agg_approval_daily
+    description: Funil diário com recusa decomposta por origem (risco x emissor x erro técnico).
+    group: anti_fraud_risk
+    access: public
+
+  - name: agg_risk_rule_performance
+    description: Performance por regra e faixa de score. Falso negativo = aprovado com chargeback de fraude.
+    group: anti_fraud_risk
+    access: public
+
+  - name: rpt_metric_definition_sensitivity
+    description: Mesmo dado, 4 definições, 4 números. Evidência para padronizar a métrica na camada semântica.
+    group: anti_fraud_risk
+    access: protected

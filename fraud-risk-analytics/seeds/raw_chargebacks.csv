@@ -1,0 +1,2 @@
+chargeback_id,transaction_id,chargeback_at,reason_code,cb_amount,_ingested_at
+cb_901,tx_1001,2026-03-15 14:00:00,10.4_fraud,150.00,2026-03-15 14:05:00

@@ -1,0 +1,11 @@
+fraud_risk_analytics:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: "fraud_risk.duckdb"
+      threads: 4
+    ci:
+      type: duckdb
+      path: "ci.duckdb"
+      threads: 4

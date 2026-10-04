@@ -1,0 +1,87 @@
+name: dbt CI - anti-fraud-risk
+
+on:
+  pull_request:
+    paths: ["fraud-risk-analytics/**", ".github/workflows/ci.yml"]
+  push:
+    branches: [main]
+    paths: ["fraud-risk-analytics/**", ".github/workflows/ci.yml"]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: fraud-risk-analytics
+
+env:
+  DBT_PROFILES_DIR: .
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.11", cache: pip, cache-dependency-path: fraud-risk-analytics/requirements.txt}
+      - run: pip install -r requirements.txt
+      - name: SQL lint (arquivos alterados no PR; tudo no push)
+        run: |
+          if [ -n "${{ github.base_ref }}" ]; then
+            files=$(git diff --name-only --relative "origin/${{ github.base_ref }}" -- 'models/**/*.sql' 'tests/**/*.sql')
+          else
+            files="models tests/singular"
+          fi
+          if [ -n "$files" ]; then sqlfluff lint $files; else echo "nenhum SQL alterado"; fi
+
+  build:
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.11", cache: pip, cache-dependency-path: fraud-risk-analytics/requirements.txt}
+      - run: pip install -r requirements.txt
+
+      # Manifest de produção para Slim CI (state:modified+) e --defer.
+      # Em produção: baixado do bucket de artefatos do último deploy da main (PROD_MANIFEST_URI).
+      - name: Baixar manifest de produção
+        run: bash scripts/ci/fetch_prod_manifest.sh prod-manifest || echo "sem manifest, build completo"
+
+      - name: Seeds (Bronze do case)
+        run: dbt seed --target ci
+
+      # dbt build roda modelos, testes de dado e unit tests na ordem do DAG.
+      - name: Build modificados + dependentes (Slim CI) ou completo
+        run: |
+          if [ -f prod-manifest/manifest.json ]; then
+            dbt build --select state:modified+ --defer --state prod-manifest --target ci
+          else
+            dbt build --exclude resource_type:seed --target ci
+          fi
+
+      - name: Validar camada semântica
+        run: dbt parse --target ci
+
+      # Data diff vs. produção (Recce/Datafold): comenta no PR o impacto nas métricas certificadas
+      # (ex.: "approval_rate da safra X muda de 80% para 75%"). Mudança não declarada no PR = bloqueio.
+
+  spark-parity:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: {distribution: temurin, java-version: "17"}
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.11", cache: pip, cache-dependency-path: fraud-risk-analytics/requirements.txt}
+      - run: pip install -r requirements.txt
+      - name: dbt (gera a referência local em DuckDB)
+        run: dbt seed && dbt build --exclude resource_type:seed
+      - name: Paridade PySpark x dbt
+        run: python -m pytest spark/tests -q
+
+  # Contratos: mudança de schema em modelo com contract enforced quebra o build;
+  # mudança em contracts/*.odcs.yaml exige aprovação do produtor (.github/CODEOWNERS).

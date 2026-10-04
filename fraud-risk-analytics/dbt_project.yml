@@ -1,0 +1,78 @@
+name: fraud_risk_analytics
+version: "1.0.0"
+config-version: 2
+profile: fraud_risk_analytics
+
+model-paths: ["models"]
+seed-paths: ["seeds"]
+test-paths: ["tests"]
+macro-paths: ["macros"]
+
+clean-targets: ["target", "dbt_packages"]
+
+vars:
+  # Data de referência para idade/maturidade de safra. Em produção = data da execução.
+  as_of_date: "2026-10-03"
+  # Janela de maturação acordada com Risco (dias). Ver docs/decisoes.md.
+  maturity_window_days: 90
+  # Tolerância de relógio entre motor de risco e gateway (segundos).
+  clock_skew_tolerance_seconds: 5
+  # Métodos sujeitos a chargeback (Pix tem MED, não chargeback).
+  chargeback_eligible_methods: ["credit_card", "debit_card"]
+
+seeds:
+  fraud_risk_analytics:
+    +schema: raw
+    raw_transactions:
+      +column_types:
+        transaction_id: varchar
+        user_id: varchar
+        transaction_at: varchar
+        amount: varchar
+        status: varchar
+        payment_method: varchar
+        _ingested_at: timestamp
+    raw_risk_evaluations:
+      +column_types:
+        evaluation_id: varchar
+        transaction_id: varchar
+        evaluated_at: varchar
+        risk_score: varchar
+        risk_action: varchar
+        rule_triggered: varchar
+        _ingested_at: timestamp
+    raw_chargebacks:
+      +column_types:
+        chargeback_id: varchar
+        transaction_id: varchar
+        chargeback_at: varchar
+        reason_code: varchar
+        cb_amount: varchar
+        _ingested_at: timestamp
+    ref_chargeback_reason_codes:
+      +schema: reference
+      +column_types:
+        network: varchar
+        reason_code: varchar
+        reason_description: varchar
+        reason_category: varchar
+
+models:
+  fraud_risk_analytics:
+    staging:
+      +schema: staging
+      +materialized: view
+    intermediate:
+      +schema: intermediate
+      +materialized: view
+    marts:
+      +schema: marts
+      +materialized: table
+    monitoring:
+      +schema: monitoring
+      +materialized: table
+
+data_tests:
+  fraud_risk_analytics:
+    +store_failures: true
+    +schema: audit

@@ -1,0 +1,5 @@
+evaluation_id,transaction_id,evaluated_at,risk_score,risk_action,rule_triggered,_ingested_at
+eval_01,tx_1001,2026-03-01 09:59:58,12,approve,,2026-03-01 10:00:01
+eval_02,tx_1002,2026-03-01 10:04:59,89,reject,rule_high_velocity,2026-03-01 10:05:01
+eval_03,tx_1003,2026-03-01 10:14:55,05,approve,,2026-03-01 10:15:01
+eval_04,tx_1004,2026-03-01 11:29:50,45,approve,rule_manual_review_pass,2026-03-01 11:30:01

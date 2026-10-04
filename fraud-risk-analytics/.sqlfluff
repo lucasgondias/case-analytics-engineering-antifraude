@@ -1,0 +1,20 @@
+[sqlfluff]
+dialect = duckdb
+templater = dbt
+max_line_length = 110
+exclude_rules = ST06, AM04, RF04, RF01, RF02, ST03
+# RF01/RF02/ST03: falsos positivos do parser duckdb com FILTER (WHERE) e IS DISTINCT FROM
+ignore = parsing
+
+[sqlfluff:templater:dbt]
+project_dir = .
+profiles_dir = .
+
+[sqlfluff:rules:capitalisation.keywords]
+capitalisation_policy = lower
+
+[sqlfluff:rules:capitalisation.functions]
+extended_capitalisation_policy = lower
+
+[sqlfluff:rules:aliasing.table]
+aliasing = explicit

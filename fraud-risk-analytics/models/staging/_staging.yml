@@ -1,0 +1,75 @@
+version: 2
+
+models:
+  - name: stg_payments__transactions
+    description: Tentativas de pagamento tipadas e deduplicadas por transaction_id (reentrega técnica).
+    columns:
+      - name: transaction_id
+        data_tests: [unique, not_null]
+      - name: transaction_at
+        description: Timestamp em America/Sao_Paulo (contrato). Nulo = falha de parsing.
+        data_tests: [not_null]
+      - name: amount
+        data_tests:
+          - not_null
+          - expression_is_true:
+              arguments:
+                expression: "> 0"
+      - name: status
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["approved", "declined", "error"]
+      - name: payment_method
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["credit_card", "debit_card", "pix", "boleto"]
+              config:
+                severity: warn
+
+  - name: stg_risk__evaluations
+    description: Avaliações do motor de risco tipadas. risk_score chega como string ('05').
+    columns:
+      - name: evaluation_id
+        data_tests: [unique, not_null]
+      - name: transaction_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_payments__transactions')
+                field: transaction_id
+              config:
+                severity: warn
+      - name: risk_score
+        data_tests:
+          - not_null
+          - expression_is_true:
+              arguments:
+                expression: "between 0 and 100"
+      - name: risk_action
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["approve", "reject", "review"]
+
+  - name: stg_acquirer__chargebacks
+    description: Eventos de chargeback com reason code normalizado e classificado (fraude x não fraude).
+    columns:
+      - name: chargeback_id
+        data_tests: [unique, not_null]
+      - name: cb_amount
+        data_tests:
+          - not_null
+          - expression_is_true:
+              arguments:
+                expression: "> 0"
+      - name: reason_category
+        description: unmapped = reason code novo sem de-para -> warn para atualizar ref_chargeback_reason_codes.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["fraud", "authorization", "processing_error", "consumer_dispute"]
+              config:
+                severity: warn

@@ -1,0 +1,6 @@
+transaction_id,user_id,transaction_at,amount,status,payment_method,_ingested_at
+tx_1001,usr_01,2026-03-01 10:00:00,150.00,approved,credit_card,2026-03-01 10:00:05
+tx_1002,usr_02,2026-03-01 10:05:00,500.00,declined,credit_card,2026-03-01 10:05:04
+tx_1003,usr_01,2026-03-01 10:15:00,1200.00,approved,pix,2026-03-01 10:15:03
+tx_1004,usr_03,2026-03-01 11:30:00,350.00,approved,credit_card,2026-03-01 11:30:04
+tx_1005,usr_03,2026-03-01 11:30:00,350.00,approved,credit_card,2026-03-01 11:30:04

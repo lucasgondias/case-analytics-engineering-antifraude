@@ -1,0 +1,19 @@
+network,reason_code,reason_description,reason_category
+visa,10.1,EMV Liability Shift Counterfeit Fraud,fraud
+visa,10.2,EMV Liability Shift Non-Counterfeit Fraud,fraud
+visa,10.3,Other Fraud - Card-Present Environment,fraud
+visa,10.4,Other Fraud - Card-Absent Environment,fraud
+visa,10.5,Visa Fraud Monitoring Program,fraud
+visa,11.1,Card Recovery Bulletin,authorization
+visa,11.2,Declined Authorization,authorization
+visa,11.3,No Authorization,authorization
+visa,12.6,Duplicate Processing or Paid by Other Means,processing_error
+visa,13.1,Merchandise or Services Not Received,consumer_dispute
+visa,13.3,Not as Described or Defective,consumer_dispute
+visa,13.6,Credit Not Processed,consumer_dispute
+mastercard,4837,No Cardholder Authorization,fraud
+mastercard,4863,Cardholder Does Not Recognize - Potential Fraud,fraud
+mastercard,4870,Chip Liability Shift,fraud
+mastercard,4871,Chip/PIN Liability Shift,fraud
+mastercard,4853,Cardholder Dispute,consumer_dispute
+mastercard,4834,Point-of-Interaction Error,processing_error

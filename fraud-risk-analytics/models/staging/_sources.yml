@@ -1,0 +1,51 @@
+version: 2
+
+sources:
+  - name: raw
+    description: >
+      Camada Bronze. Append-only, cópia fiel do produtor + metadado de ingestão (_ingested_at).
+      Em produção é carregada pela ingestão (CDC/stream); aqui vem de seeds.
+    schema: raw
+    loaded_at_field: _ingested_at
+    tables:
+      - name: raw_transactions
+        description: Tentativas de pagamento enviadas para risco/autorização (produtor - Payments).
+        config:
+          freshness:
+            warn_after: {count: 30, period: minute}
+            error_after: {count: 2, period: hour}
+        columns:
+          - name: transaction_id
+            data_tests: [not_null]
+          - name: status
+            data_tests:
+              - accepted_values:
+                  arguments:
+                    values: ["approved", "declined", "error"]
+
+      - name: raw_risk_evaluations
+        description: Decisões do motor de risco (produtor - Risk Engine).
+        config:
+          freshness:
+            warn_after: {count: 30, period: minute}
+            error_after: {count: 2, period: hour}
+        columns:
+          - name: evaluation_id
+            data_tests: [not_null, unique]
+          - name: risk_action
+            data_tests:
+              - accepted_values:
+                  arguments:
+                    values: ["approve", "reject", "review"]
+
+      - name: raw_chargebacks
+        description: >
+          Notificações assíncronas da adquirente. Chegam D+N (até 90 dias, contrato com Risco).
+          Freshness é o monitor mais importante do projeto: se o feed para, o CB rate "melhora" sozinho.
+        config:
+          freshness:
+            warn_after: {count: 2, period: day}
+            error_after: {count: 4, period: day}
+        columns:
+          - name: chargeback_id
+            data_tests: [not_null, unique]

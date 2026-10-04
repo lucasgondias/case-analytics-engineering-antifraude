@@ -1,0 +1,6 @@
+# Times ilustrativos: no ambiente real, substituir pelos times do GitHub da organização.
+*                                              @data-risk-ae
+/fraud-risk-analytics/models/marts/            @data-risk-ae @risk-analytics-leads
+/fraud-risk-analytics/models/semantic/         @data-risk-ae @risk-analytics-leads
+/fraud-risk-analytics/contracts/acquirer_*     @data-risk-ae @payments-integrations
+/fraud-risk-analytics/contracts/risk_engine_*  @data-risk-ae @risk-engine

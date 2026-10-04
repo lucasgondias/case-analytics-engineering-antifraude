@@ -1,0 +1,1083 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Anti-Fraud &amp; Risk · Case Analytics Engineering</title>
+<meta name="description" content="Proposta de arquitetura, modelagem, qualidade e governança de dados para o time de Risco: aprovação, chargeback por safra e perda por fraude.">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  --bg: #ffffff;
+  --bg-soft: #f8fafd;
+  --bg-alt: #f1f4f9;
+  --text: #0b1430;
+  --text-muted: #4a5570;
+  --text-light: #8a93a8;
+  --border: #e3e8f0;
+  --border-strong: #cdd5e2;
+  --primary: #0050c3;
+  --primary-hover: #003f9a;
+  --primary-soft: #dfe9fb;
+  --primary-tint: #f2f6fe;
+  --navy: #0b1430;
+  --green: #0a8754;
+  --green-soft: #d8f3e6;
+  --yellow: #b45309;
+  --yellow-soft: #fdf0d5;
+  --red: #c62828;
+  --red-soft: #fde4e4;
+
+  --shadow-xs: 0 1px 2px rgba(11,20,48,0.05);
+  --shadow: 0 2px 6px rgba(11,20,48,0.05), 0 1px 2px rgba(11,20,48,0.04);
+  --shadow-md: 0 8px 24px rgba(11,20,48,0.07), 0 2px 6px rgba(11,20,48,0.04);
+
+  --radius-sm: 10px;
+  --radius: 16px;
+  --radius-lg: 24px;
+  --pill: 999px;
+
+  --font-display: 'Archivo', ui-sans-serif, system-ui, sans-serif;
+  --font-body: 'Manrope', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', ui-monospace, Consolas, monospace;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  font-size: 15.5px;
+}
+.container { max-width: 1200px; margin: 0 auto; padding: 0 2rem 6rem; }
+
+/* TOPBAR */
+.topbar {
+  background: rgba(255,255,255,0.92);
+  backdrop-filter: saturate(180%) blur(16px);
+  -webkit-backdrop-filter: saturate(180%) blur(16px);
+  border-bottom: 1px solid var(--border);
+  padding: 1.1rem 2rem;
+  position: sticky; top: 0; z-index: 100;
+}
+.topbar-inner { max-width: 1200px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.brand { display: flex; align-items: center; gap: 0.55rem; text-decoration: none; }
+.brand-dot { width: 22px; height: 22px; border-radius: 50%; background: var(--primary); display: inline-block; }
+.brand-name { font-family: var(--font-display); font-weight: 800; font-size: 1.35rem; color: var(--text); letter-spacing: -0.04em; }
+.brand-divider { color: var(--border-strong); font-weight: 300; font-size: 1.25rem; margin: 0 0.15rem; line-height: 1; }
+.brand-team { font-family: var(--font-display); font-weight: 600; font-size: 0.95rem; color: var(--text-muted); letter-spacing: -0.01em; }
+.topbar-nav { display: flex; gap: 1.4rem; align-items: center; }
+.topbar-nav a { color: var(--text); text-decoration: none; font-size: 0.86rem; font-weight: 500; transition: color 0.18s; }
+.topbar-nav a:hover { color: var(--primary); }
+.topbar-nav .btn-primary { background: var(--primary); color: white; padding: 0.6rem 1.3rem; border-radius: var(--pill); font-weight: 600; font-size: 0.84rem; }
+.topbar-nav .btn-primary:hover { background: var(--primary-hover); color: white; }
+
+/* HERO */
+.hero { padding: 5rem 2rem 3.5rem; border-bottom: 1px solid var(--border); }
+.hero-inner { max-width: 1200px; margin: 0 auto; }
+.hero-eyebrow { text-transform: uppercase; letter-spacing: 2px; font-size: 0.72rem; font-weight: 700; color: var(--primary); margin-bottom: 1.35rem; display: inline-block; font-family: var(--font-display); }
+.hero h1 { font-family: var(--font-display); font-size: clamp(2.4rem, 5.5vw, 4.2rem); font-weight: 800; line-height: 1.05; letter-spacing: -0.03em; margin-bottom: 1.4rem; max-width: 980px; }
+.hero h1 .accent { color: var(--primary); }
+.hero .subtitle { color: var(--text-muted); font-size: 1.1rem; max-width: 780px; margin-bottom: 1.75rem; }
+.hero .subtitle strong { color: var(--text); font-weight: 700; }
+.hero .meta { display: flex; gap: 0.55rem; flex-wrap: wrap; margin-top: 1.5rem; }
+.meta-pill { background: white; color: var(--text); border: 1px solid var(--border); padding: 0.5rem 1.1rem; border-radius: var(--pill); font-size: 0.82rem; font-weight: 500; }
+.meta-pill.primary { background: var(--navy); color: white; border-color: var(--navy); }
+
+/* TLDR */
+.tldr { border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 2rem 2.25rem; margin: 2.5rem 0 3rem; box-shadow: var(--shadow); position: relative; overflow: hidden; }
+.tldr::before { content: ''; position: absolute; left: 0; top: 0; width: 4px; height: 100%; background: var(--primary); }
+.tldr-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1.5px; color: var(--primary); font-weight: 700; margin-bottom: 0.75rem; font-family: var(--font-display); }
+.tldr-title { font-family: var(--font-display); font-size: 1.55rem; font-weight: 800; margin-bottom: 0.85rem; letter-spacing: -0.4px; line-height: 1.25; }
+.tldr-body { font-size: 1rem; color: var(--text-muted); line-height: 1.65; }
+.tldr-body p + p { margin-top: 0.85rem; }
+.tldr-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1.75rem; margin-top: 1.75rem; padding-top: 1.75rem; border-top: 1px solid var(--border); }
+.tldr-stat .num { font-family: var(--font-display); font-size: 1.8rem; font-weight: 800; line-height: 1; letter-spacing: -0.5px; }
+.tldr-stat .num.red { color: var(--red); }
+.tldr-stat .num.blue { color: var(--primary); }
+.tldr-stat .lbl { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.7px; margin-top: 0.45rem; font-weight: 600; font-family: var(--font-display); line-height: 1.4; }
+
+/* TEXT */
+h1, h2, h3, h4 { color: var(--text); font-family: var(--font-display); letter-spacing: -0.025em; }
+h2 { font-size: 2.1rem; margin: 4.5rem 0 1.25rem; font-weight: 800; letter-spacing: -0.8px; line-height: 1.15; }
+h2 .accent { color: var(--primary); }
+h2 .sec-num { display: block; font-size: 0.78rem; letter-spacing: 2px; color: var(--primary); font-weight: 700; margin-bottom: 0.5rem; }
+h3 { font-size: 1.3rem; margin: 2rem 0 0.75rem; font-weight: 700; letter-spacing: -0.3px; }
+h3:first-child { margin-top: 0; }
+h4 { font-size: 1.05rem; margin: 1.25rem 0 0.5rem; font-weight: 600; }
+p, li { margin-bottom: 0.5rem; }
+p { color: var(--text-muted); }
+p strong, li strong { color: var(--text); font-weight: 700; }
+ul, ol { margin: 0.75rem 0 0.75rem 1.5rem; color: var(--text-muted); }
+li { line-height: 1.65; }
+.lead { font-size: 1.05rem; max-width: 880px; }
+
+.section { border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 2rem 2.25rem; margin-bottom: 1.5rem; box-shadow: var(--shadow-xs); }
+
+/* TOC */
+.toc { background: var(--bg-alt); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 2rem 2.25rem; margin-bottom: 2.5rem; }
+.toc strong { display: block; margin-bottom: 1rem; font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px; font-family: var(--font-display); }
+.toc a { color: var(--text); text-decoration: none; font-weight: 500; transition: all 0.15s; }
+.toc a:hover { color: var(--primary); padding-left: 4px; }
+.toc ol { list-style: none; counter-reset: item; padding: 0; margin: 0; columns: 2; column-gap: 2.5rem; }
+.toc ol li { counter-increment: item; margin: 0.45rem 0; position: relative; padding-left: 2.2rem; break-inside: avoid; }
+.toc ol li::before { content: counter(item, decimal-leading-zero); position: absolute; left: 0; color: var(--primary); font-weight: 800; font-size: 0.82rem; font-family: var(--font-display); }
+
+/* TABLES */
+.table-wrap { overflow-x: auto; margin: 1.25rem 0; }
+table { width: 100%; border-collapse: collapse; font-size: 0.9rem; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--border); }
+.table-wrap table { margin: 0; }
+th { background: var(--bg-alt); color: var(--text-muted); text-align: left; padding: 12px 16px; border-bottom: 1px solid var(--border); font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.9px; font-family: var(--font-display); vertical-align: top; }
+td { padding: 12px 16px; border-bottom: 1px solid var(--border); vertical-align: top; font-size: 0.92rem; line-height: 1.55; }
+tr:hover td { background: var(--bg-soft); }
+tr:last-child td { border-bottom: none; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+tr.highlight td { background: var(--primary-tint); font-weight: 600; }
+tr.danger td { background: #fff7f7; }
+td:first-child code { white-space: nowrap; word-break: normal; }
+
+/* CODE */
+code { background: var(--bg-alt); padding: 2px 7px; border-radius: 6px; font-size: 0.84em; color: var(--primary-hover); font-family: var(--font-mono); font-weight: 500; border: 1px solid var(--border); word-break: break-word; }
+pre { background: #0b1430; color: #e6eaf2; padding: 1.2rem 1.5rem; border-radius: var(--radius); overflow-x: auto; font-size: 0.8rem; line-height: 1.65; margin: 1rem 0; font-family: var(--font-mono); }
+pre code { background: transparent; color: inherit; padding: 0; border: none; font-weight: 400; }
+pre .c { color: #8a97b8; }
+pre .k { color: #7fb2ff; }
+pre .s { color: #9be2b5; }
+pre .w { color: #ffd479; }
+.code-label { font-family: var(--font-mono); font-size: 0.74rem; color: var(--text-light); margin: 1.25rem 0 -0.5rem; }
+
+/* BADGES */
+.badge { display: inline-block; padding: 3px 11px; border-radius: var(--pill); font-size: 0.7rem; font-weight: 700; letter-spacing: 0.3px; font-family: var(--font-display); white-space: nowrap; }
+.badge-ok { background: var(--green-soft); color: #064e35; }
+.badge-warn { background: var(--yellow-soft); color: #7a3a06; }
+.badge-err { background: var(--red-soft); color: #7f1d1d; }
+.badge-info { background: var(--primary-soft); color: var(--primary-hover); }
+.badge-mute { background: var(--bg-alt); color: var(--text-muted); }
+
+/* CALLOUT */
+.callout { background: var(--primary-tint); border: 1px solid var(--primary-soft); border-left: 4px solid var(--primary); border-radius: var(--radius); padding: 1.25rem 1.5rem; margin: 1.5rem 0; }
+.callout.red { background: #fff6f6; border-color: var(--red-soft); border-left-color: var(--red); }
+.callout-label { font-family: var(--font-display); font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1.2px; color: var(--primary); margin-bottom: 0.5rem; }
+.callout.red .callout-label { color: var(--red); }
+.callout p { color: var(--text); margin-bottom: 0.4rem; }
+.callout p:last-child { margin-bottom: 0; }
+
+/* CARD GRID */
+.card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; margin: 1.5rem 0; }
+.card { border: 1px solid var(--border); border-radius: var(--radius); padding: 1.4rem 1.5rem; background: var(--bg); box-shadow: var(--shadow-xs); }
+.card .card-kicker { font-family: var(--font-display); font-weight: 900; font-size: 1.5rem; color: var(--primary); line-height: 1; letter-spacing: -1px; margin-bottom: 0.6rem; }
+.card h4 { margin: 0 0 0.4rem; font-size: 1.02rem; font-weight: 700; }
+.card p { font-size: 0.92rem; margin: 0; }
+.card ul { font-size: 0.9rem; margin: 0.4rem 0 0 1.1rem; }
+
+/* ETAPAS */
+.etapa-list { display: grid; gap: 0.75rem; margin: 1.5rem 0; }
+.etapa-item { display: flex; align-items: flex-start; gap: 1.25rem; padding: 1.25rem 1.5rem; border: 1px solid var(--border); border-radius: var(--radius); }
+.etapa-item-num { font-family: var(--font-display); font-size: 1.45rem; font-weight: 900; color: var(--primary); line-height: 1; min-width: 42px; letter-spacing: -1px; }
+.etapa-item-body h4 { font-size: 1.02rem; font-weight: 700; margin: 0 0 0.3rem; }
+.etapa-item-body p { font-size: 0.94rem; margin: 0; }
+
+/* FLUXO SVG */
+.fluxo-wrap { border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1.75rem; margin: 1.5rem 0; box-shadow: var(--shadow-xs); overflow-x: auto; background: var(--bg); }
+.fluxo-wrap svg { display: block; margin: 0 auto; width: 100%; min-width: 860px; height: auto; }
+.fluxo-caption { font-size: 0.82rem; color: var(--text-light); margin-top: 0.75rem; text-align: center; }
+
+/* TERMINAL */
+.terminal { background: #0b1430; color: #e6eaf2; border-radius: var(--radius); padding: 1.1rem 1.4rem; font-family: var(--font-mono); font-size: 0.78rem; line-height: 1.7; overflow-x: auto; margin: 1rem 0; white-space: pre; }
+.terminal .ok { color: #7ee0a8; }
+.terminal .warn { color: #ffd479; }
+.terminal .dim { color: #8a97b8; }
+
+/* GLOSSARIO */
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+
+/* FOOTER */
+.footer { max-width: 1200px; margin: 4rem auto 0; padding: 3rem 2rem 2rem; border-top: 1px solid var(--border); text-align: center; color: var(--text-muted); font-size: 0.86rem; }
+.footer .footer-brand { display: inline-flex; align-items: center; gap: 0.55rem; margin-bottom: 1rem; }
+.footer .footer-brand .brand-dot { width: 18px; height: 18px; }
+.footer .footer-brand .brand-name { font-size: 1.1rem; }
+.footer p { margin: 0.4rem 0; }
+
+@media (max-width: 860px) {
+  .container { padding: 0 1rem 3rem; }
+  .topbar { padding: 0.9rem 1rem; }
+  .topbar-nav a:not(.btn-primary) { display: none; }
+  .hero { padding: 3.5rem 1rem 2.5rem; }
+  h2 { font-size: 1.6rem; margin: 3rem 0 1rem; }
+  .section, .tldr, .toc { padding: 1.4rem; }
+  .toc ol { columns: 1; }
+  .two-col { grid-template-columns: 1fr; }
+  th, td { padding: 9px 10px; }
+}
+@media print {
+  .topbar { position: static; }
+  h2 { break-before: page; margin-top: 1rem; }
+  .section, .card, .etapa-item, pre, table { break-inside: avoid; }
+}
+
+/* MODO APRESENTACAO */
+#slide-hud { display: none; }
+body.presenting { font-size: 17px; overflow: hidden; }
+body.presenting .topbar, body.presenting .toc, body.presenting .footer { display: none; }
+body.presenting .slide { display: none; }
+body.presenting .slide.active {
+  display: block; position: fixed; inset: 0; z-index: 200; overflow-y: auto;
+  background: var(--bg); padding: 3.5rem max(5vw, 1.5rem) 6rem; margin: 0; border: none; border-radius: 0; box-shadow: none;
+}
+body.presenting .slide.active > * { width: 100%; max-width: 1200px; margin-left: auto; margin-right: auto; }
+body.presenting .hero.slide.active { display: flex; align-items: center; }
+body.presenting .hero.slide.active .hero-inner { width: 100%; }
+body.presenting .tldr.slide.active::before { display: none; }
+body.presenting .tldr.slide.active { display: flex; flex-direction: column; justify-content: center; }
+body.presenting h2 { margin-top: 0; }
+body.presenting #slide-hud {
+  display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 300; align-items: center; gap: 1rem;
+  padding: 0.7rem max(5vw, 1.5rem); background: rgba(255,255,255,0.94); border-top: 1px solid var(--border);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); font-size: 0.82rem; color: var(--text-muted);
+}
+#slide-hud .hud-brand { display: flex; align-items: center; gap: 0.45rem; font-family: var(--font-display); font-weight: 800; color: var(--text); }
+#slide-hud .hud-brand .brand-dot { width: 14px; height: 14px; }
+#slide-hud .hud-progress { flex: 1; height: 4px; background: var(--bg-alt); border-radius: var(--pill); overflow: hidden; }
+#slide-hud .hud-progress span { display: block; height: 100%; width: 0; background: var(--primary); transition: width 0.25s; }
+#slide-hud .hud-count { font-family: var(--font-display); font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; min-width: 4.5rem; text-align: right; }
+#slide-hud button {
+  border: 1px solid var(--border); background: white; color: var(--text); border-radius: var(--pill);
+  padding: 0.35rem 0.85rem; font: inherit; font-weight: 600; cursor: pointer;
+}
+#slide-hud button:hover { border-color: var(--primary); color: var(--primary); }
+#slide-hud .hud-hint { color: var(--text-light); }
+@media (max-width: 860px) { #slide-hud .hud-hint { display: none; } }
+@media print { #slide-hud { display: none !important; } }
+</style>
+</head>
+<body>
+
+<nav class="topbar">
+  <div class="topbar-inner">
+    <a href="#topo" class="brand">
+      <span class="brand-dot"></span>
+      <span class="brand-name">Case AE</span>
+      <span class="brand-divider">|</span>
+      <span class="brand-team">Anti-Fraud &amp; Risk</span>
+    </a>
+    <div class="topbar-nav">
+      <a href="#diagnostico">Diagnóstico</a>
+      <a href="#arquitetura">Arquitetura</a>
+      <a href="#qualidade">Qualidade</a>
+      <a href="#operacao">Operação</a>
+      <a href="#roadmap">Roadmap</a>
+      <a href="guia-conceitos-fraude-e-risco.html">Conceitos</a>
+      <a href="#" id="present-btn" class="btn-primary" title="Modo apresentação (tecla P)">Apresentar</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero" id="topo">
+  <div class="hero-inner">
+    <span class="hero-eyebrow">Case · Analytics Engineering · Prevenção a Fraudes</span>
+    <h1>Uma fonte única da verdade para <span class="accent">risco, conversão e chargeback</span></h1>
+    <p class="subtitle">Arquitetura, modelagem, qualidade e governança para o time de Risco medir o <strong>motor de fraude</strong>, a <strong>perda por chargeback por safra</strong> e o <strong>impacto das regras na aprovação</strong>, com erros silenciosos detectados antes de chegarem ao executivo.</p>
+    <div class="meta">
+      <span class="meta-pill primary">Protótipo executável: dbt + DuckDB e PySpark</span>
+      <span class="meta-pill">51 testes, 2 achados reais no dado</span>
+      <span class="meta-pill">Stack neutra</span>
+      <span class="meta-pill">Outubro de 2026</span>
+    </div>
+  </div>
+</header>
+
+<div class="container">
+
+<div class="tldr">
+  <div class="tldr-label">Resumo executivo</div>
+  <div class="tldr-title">As métricas divergem por causa da definição. O SQL não é o problema, e o próprio dado do case prova isso.</div>
+  <div class="tldr-body">
+    <p>Com as 5 transações do enunciado, a mesma taxa de chargeback financeiro varia de <strong>7,3% a 30,0%</strong>, dependendo de três escolhas que hoje não estão escritas: incluir Pix no denominador, contar uma duplicata e definir quem recusou. Além disso, o dado já traz <strong>uma transação aprovada sem avaliação de risco</strong>. É exatamente o tipo de falha silenciosa que o contexto do case descreve.</p>
+    <p>A proposta tem quatro peças:</p>
+    <ul>
+      <li>Um modelo em camadas com grão explícito.</li>
+      <li>Incremental que reabre <strong>só as safras afetadas</strong> por chargeback tardio, inclusive depois de 90 dias.</li>
+      <li>Testes e monitores de comportamento, além dos de schema.</li>
+      <li>Uma camada semântica onde cada métrica é definida uma única vez.</li>
+    </ul>
+    <p>Tudo isso está implementado e rodando num repositório que acompanha este documento, em SQL (dbt) e em PySpark, com teste de paridade provando que as duas implementações dão o mesmo resultado.</p>
+  </div>
+  <div class="tldr-stats">
+    <div class="tldr-stat"><div class="num red">7,3% → 30%</div><div class="lbl">CB rate R$ do mesmo dado,<br>4 definições</div></div>
+    <div class="tldr-stat"><div class="num red">1 de 4</div><div class="lbl">aprovadas sem<br>avaliação de risco</div></div>
+    <div class="tldr-stat"><div class="num">8</div><div class="lbl">armadilhas no<br>dado de exemplo</div></div>
+    <div class="tldr-stat"><div class="num blue">51</div><div class="lbl">testes no protótipo<br>(dbt + PySpark)</div></div>
+    <div class="tldr-stat"><div class="num blue">D+120</div><div class="lbl">chargeback tardio<br>atribuído à safra certa</div></div>
+  </div>
+</div>
+
+<div class="toc">
+  <strong>Índice</strong>
+  <ol>
+    <li><a href="#diagnostico">Diagnóstico: o que o dado já está dizendo</a></li>
+    <li><a href="#definicoes">Mesmo dado, quatro números</a></li>
+    <li><a href="#arquitetura">Arquitetura de dados</a></li>
+    <li><a href="#modelagem">Modelagem e grão</a></li>
+    <li><a href="#incremental">Safra e reprocessamento incremental</a></li>
+    <li><a href="#qualidade">Qualidade e erros silenciosos</a></li>
+    <li><a href="#cicd">CI/CD</a></li>
+    <li><a href="#contratos">Data contracts</a></li>
+    <li><a href="#operacao">Observabilidade e SLAs</a></li>
+    <li><a href="#materializacao">Materialização no warehouse</a></li>
+    <li><a href="#consumo">Consumo pelos usuários</a></li>
+    <li><a href="#prototipo">Protótipo executável</a></li>
+    <li><a href="#roadmap">Roadmap e perguntas para Risco</a></li>
+  </ol>
+</div>
+
+<!-- 01 DIAGNOSTICO -->
+<section id="diagnostico">
+<h2><span class="sec-num">01</span>O que o dado <span class="accent">já está dizendo</span></h2>
+<p class="lead">Antes de desenhar a arquitetura, li o dado de exemplo como se fosse produção. Achei oito pontos e cada um vira teste, coluna ou cláusula de contrato.</p>
+<div class="section">
+<div class="table-wrap">
+<table>
+<thead><tr><th>#</th><th>Evidência no dado</th><th>Leitura de risco</th><th>Tratamento</th><th>Severidade</th></tr></thead>
+<tbody>
+<tr class="danger"><td>1</td><td><code>tx_1005</code> aprovada e <strong>sem registro</strong> em <code>raw_risk_evaluations</code></td><td>O motor aprovou sem avaliar (por exemplo, após timeout) ou o feed de avaliações perdeu o evento. Nos dois casos, há aprovação sem análise de risco</td><td>Flag <code>is_approved_without_risk_evaluation</code> e monitor P1 quando passar de 1% no dia</td><td><span class="badge badge-err">P1</span></td></tr>
+<tr class="danger"><td>2</td><td><code>tx_1004</code> e <code>tx_1005</code>: mesmo usuário, valor, método e segundo, com ids diferentes</td><td>Reentrega do gateway, que infla aprovação e denominador, ou cobrança em dobro real, que gera chargeback quase certo</td><td>Suspeita marcada pela chave natural em janela de 60s. Sinaliza e não apaga</td><td><span class="badge badge-warn">P2</span></td></tr>
+<tr><td>3</td><td><code>tx_1003</code> é <strong>Pix</strong>, R$ 1.200</td><td>Pix não tem chargeback (tem MED). Colocado no denominador, derruba o CB rate pela metade</td><td><code>is_chargeback_eligible</code> e métrica de cartão separada</td><td><span class="badge badge-info">Definição</span></td></tr>
+<tr><td>4</td><td><code>status = declined</code> não diz quem recusou</td><td>Sem a origem da recusa não dá para medir o impacto das regras na conversão, que é um dos três objetivos do case</td><td><code>decline_source</code>: motor, emissor, erro técnico ou desconhecido</td><td><span class="badge badge-info">Modelagem</span></td></tr>
+<tr><td>5</td><td><code>eval_04</code>: <code>approve</code> com <code>rule_manual_review_pass</code></td><td><code>rule_triggered</code> mistura regra disparada com decisão humana, o que infla a performance do motor automático</td><td><code>decision_source</code>: automática ou revisão manual</td><td><span class="badge badge-info">Modelagem</span></td></tr>
+<tr><td>6</td><td><code>risk_score = 05</code></td><td>O score chega como texto, sem contrato de tipo, e um cast silencioso pode virar nulo</td><td>Cast explícito no staging, teste de faixa 0 a 100 e contrato</td><td><span class="badge badge-mute">Contrato</span></td></tr>
+<tr><td>7</td><td>Timestamps sem fuso, sem moeda</td><td>O fuso define o corte diário da safra. Sem moeda, o <code>cb_amount</code> pode não ser comparável ao <code>amount</code></td><td>Contrato v2 exige offset e <code>currency</code></td><td><span class="badge badge-mute">Contrato</span></td></tr>
+<tr><td>8</td><td>Chargeback sem estágio da disputa e sem reversão</td><td>Não há perda líquida nem taxa de vitória em disputa. Chargeback parcial e reapresentação ficam invisíveis</td><td>Grão de evento em <code>fct_chargebacks</code> e <code>dispute_stage</code> no contrato v2</td><td><span class="badge badge-mute">Contrato</span></td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>Lacunas nas definições de negócio</h3>
+<div class="card-grid">
+  <div class="card"><h4>"Perda Bruta por Fraude" soma todos os chargebacks</h4><p>A soma inclui desacordo comercial (Visa 13.x, Mastercard 4853), que não é fraude. O texto ainda fala em "valor recuperado", que é o oposto de perda. <strong>Proposta:</strong> Perda por Fraude usa só reason codes de fraude, e a Perda Total segue como métrica separada. O "período" também não está definido: pode ser a data da notificação ou a safra, e publico as duas leituras.</p></div>
+  <div class="card"><h4>Janela fixa de 90 dias</h4><p>Bandeiras aceitam chargeback em até 120 dias, conforme o motivo. Reprocessar os últimos 90 dias perde o evento tardio e recalcula o que não mudou. <strong>Proposta:</strong> reprocessar as safras afetadas e validar a janela com a curva de maturação real.</p></div>
+  <div class="card"><h4>Performance do motor só tem um lado</h4><p>Só transações aprovadas recebem rótulo, porque a recusada nunca vira chargeback (viés de seleção). <strong>Proposta:</strong> grupo de controle aprovado sem regras, numa amostra pequena, para medir quantos clientes bons o motor recusa.</p></div>
+  <div class="card"><h4><code>error</code> no denominador da aprovação</h4><p>Falha técnica derruba a taxa de conversão e parece culpa do motor. Retentativas inflam as tentativas. <strong>Proposta:</strong> manter a métrica oficial e publicar a auxiliar "sem erros técnicos", com a origem da recusa ao lado.</p></div>
+</div>
+</div>
+</section>
+
+<!-- 02 DEFINICOES -->
+<section id="definicoes">
+<h2><span class="sec-num">02</span>Mesmo dado, <span class="accent">quatro números</span></h2>
+<p class="lead">Saída real do modelo <code>rpt_metric_definition_sensitivity</code> sobre as 5 transações do case. Cada time escolhendo um recorte explica as métricas divergentes citadas no enunciado.</p>
+<div class="section">
+<div class="table-wrap">
+<table>
+<thead><tr><th>Recorte</th><th class="num">Tentadas</th><th class="num">Aprovação</th><th class="num">CB qtd</th><th class="num">Aprovado R$</th><th class="num">CB rate R$</th></tr></thead>
+<tbody>
+<tr><td>Contrato literal (todos os métodos, com duplicidade)</td><td class="num">5</td><td class="num">80,00%</td><td class="num">25,00%</td><td class="num">2.050,00</td><td class="num">7,32%</td></tr>
+<tr><td>Sem o candidato a duplicidade (tx_1005)</td><td class="num">4</td><td class="num">75,00%</td><td class="num">33,33%</td><td class="num">1.700,00</td><td class="num">8,82%</td></tr>
+<tr><td>Só métodos elegíveis a chargeback (cartão)</td><td class="num">4</td><td class="num">75,00%</td><td class="num">33,33%</td><td class="num">850,00</td><td class="num">17,65%</td></tr>
+<tr class="highlight"><td>Cartão e sem duplicidade</td><td class="num">3</td><td class="num">66,67%</td><td class="num">50,00%</td><td class="num">500,00</td><td class="num">30,00%</td></tr>
+</tbody>
+</table>
+</div>
+<div class="callout">
+  <div class="callout-label">Decisão de governança</div>
+  <p>Publico a métrica oficial <strong>exatamente como o contrato define</strong>. Redefinir a métrica sozinho criaria mais uma versão divergente. Ao lado dela entram as variantes propostas (só cartão, por origem da recusa, só fraude), todas na camada semântica, com dono e histórico de mudança. A troca da métrica oficial vira decisão explícita do time de Risco.</p>
+</div>
+
+<h3>Como cada regra do enunciado foi implementada</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Regra do enunciado</th><th>Implementação</th><th>Detalhe que o texto não diz</th></tr></thead>
+<tbody>
+<tr><td>Aprovação: tentadas incluem <code>approved</code>, <code>declined</code> e <code>error</code></td><td>Métrica <code>approval_rate</code> literal: aprovadas sobre todas as tentativas</td><td>Ao lado: recusas por origem (motor, emissor, erro técnico) para isolar o impacto das regras</td></tr>
+<tr><td>CB rate financeiro: valor de CB da safra sobre valor aprovado da safra</td><td>Razão de somas na camada semântica, a partir de <code>agg_chargeback_cohort_daily</code></td><td>O numerador considera só chargebacks de transações aprovadas, coerente com o denominador. CB em transação recusada vira alerta</td></tr>
+<tr><td>CB rate quantidade: transações com CB sobre transações aprovadas</td><td><code>chargeback_transaction_count / approved_count</code></td><td>Conta <strong>transações distintas</strong>. Dois chargebacks na mesma transação (parcial, reapresentação) contam uma vez</td></tr>
+<tr><td>Safra = <code>transaction_date</code>, não <code>chargeback_at</code></td><td><code>cohort_date</code> derivado de <code>transaction_at</code>, garantido por teste unitário</td><td>O raw não tem <code>transaction_date</code>: a data depende do fuso (premissa: America/Sao_Paulo). Safra diária no fato e mensal pela camada semântica, que é a leitura usual do executivo</td></tr>
+<tr><td>Elegibilidade: só aprovadas no denominador</td><td>Filtro <code>is_approved</code> nos dois denominadores</td><td>Pix aprovado é elegível pelo texto, mas não tem chargeback. A variante "só cartão" fica ao lado da oficial</td></tr>
+<tr><td>Perda Bruta: soma de <code>cb_amount</code> "em determinado período"</td><td>Duas leituras publicadas: por <strong>data de notificação</strong> (caixa e financeiro) e por <strong>safra</strong> (risco)</td><td>O período não está definido no texto. As duas somas fecham no total; mudam só a data de corte. É pergunta para Risco</td></tr>
+<tr><td>Maturação de 90 dias e reprocessamento retroativo</td><td>Toda safra afetada é reprocessada a cada chegada de chargeback, dentro <strong>e fora</strong> dos 90 dias</td><td>Atende o requisito literal e cobre a cauda de D+91 a D+120. Ver a seção 05</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+
+<!-- 03 ARQUITETURA -->
+<section id="arquitetura">
+<h2><span class="sec-num">03</span>Arquitetura de <span class="accent">dados</span></h2>
+<p class="lead">Medallion com contrato na entrada, testes entre camadas e uma camada semântica na saída. O desenho não depende de fornecedor: as mesmas peças existem em BigQuery, Snowflake e Databricks.</p>
+
+<div class="fluxo-wrap">
+<svg viewBox="0 0 1120 520" xmlns="http://www.w3.org/2000/svg" font-family="Manrope, sans-serif" role="img" aria-label="Diagrama de arquitetura: fontes, ingestão, bronze, silver, gold, camada semântica e consumo, com qualidade e observabilidade transversais">
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#8a93a8"/></marker>
+  </defs>
+  <!-- column titles -->
+  <g font-family="Archivo, sans-serif" font-size="11" font-weight="700" fill="#4a5570" letter-spacing="1.2">
+    <text x="20" y="22">FONTES</text>
+    <text x="190" y="22">INGESTÃO</text>
+    <text x="365" y="22">BRONZE</text>
+    <text x="530" y="22">SILVER</text>
+    <text x="700" y="22">GOLD</text>
+    <text x="870" y="22">SEMÂNTICA</text>
+    <text x="1010" y="22">CONSUMO</text>
+  </g>
+  <!-- sources -->
+  <g font-size="12">
+    <rect x="16" y="40" width="148" height="62" rx="12" fill="#f1f4f9" stroke="#cdd5e2"/>
+    <text x="30" y="66" font-weight="700" fill="#0b1430">Gateway de pagamento</text>
+    <text x="30" y="86" fill="#4a5570">transactions</text>
+    <rect x="16" y="116" width="148" height="62" rx="12" fill="#f1f4f9" stroke="#cdd5e2"/>
+    <text x="30" y="142" font-weight="700" fill="#0b1430">Motor de risco</text>
+    <text x="30" y="162" fill="#4a5570">risk_evaluations</text>
+    <rect x="16" y="192" width="148" height="62" rx="12" fill="#f1f4f9" stroke="#cdd5e2"/>
+    <text x="30" y="218" font-weight="700" fill="#0b1430">Adquirentes</text>
+    <text x="30" y="238" fill="#4a5570">chargebacks (D+N)</text>
+  </g>
+  <!-- ingestion -->
+  <rect x="186" y="40" width="150" height="214" rx="14" fill="#ffffff" stroke="#0050c3" stroke-width="1.5"/>
+  <g font-size="12" fill="#0b1430">
+    <text x="200" y="66" font-weight="700">CDC / stream</text>
+    <text x="200" y="88" fill="#4a5570">validação do contrato</text>
+    <text x="200" y="106" fill="#4a5570">no payload</text>
+    <rect x="200" y="122" width="122" height="34" rx="8" fill="#fde4e4"/>
+    <text x="210" y="144" font-size="11.5" fill="#7f1d1d" font-weight="600">quarentena (DLQ)</text>
+    <text x="200" y="180" fill="#4a5570">+ _ingested_at</text>
+    <text x="200" y="198" fill="#4a5570">+ _source_version</text>
+    <text x="200" y="230" font-size="11" fill="#8a93a8">contrato inválido não</text>
+    <text x="200" y="245" font-size="11" fill="#8a93a8">entra; vai para a DLQ</text>
+  </g>
+  <!-- bronze -->
+  <rect x="356" y="40" width="150" height="214" rx="14" fill="#fbf4ea" stroke="#d6b98a"/>
+  <g font-size="12" fill="#0b1430">
+    <text x="370" y="66" font-weight="700">raw_*</text>
+    <text x="370" y="88" fill="#4a5570">append-only</text>
+    <text x="370" y="106" fill="#4a5570">cópia fiel</text>
+    <text x="370" y="124" fill="#4a5570">particionado por</text>
+    <text x="370" y="142" fill="#4a5570">_ingested_at</text>
+    <text x="370" y="176" fill="#4a5570">replay e auditoria</text>
+    <text x="370" y="194" fill="#4a5570">retenção 5 anos</text>
+  </g>
+  <!-- silver -->
+  <rect x="526" y="40" width="150" height="214" rx="14" fill="#eef1f6" stroke="#9aa6bd"/>
+  <g font-size="12" fill="#0b1430">
+    <text x="540" y="66" font-weight="700">staging</text>
+    <text x="540" y="86" fill="#4a5570">tipos, fuso, enum</text>
+    <text x="540" y="104" fill="#4a5570">dedup técnico</text>
+    <text x="540" y="140" font-weight="700">intermediate</text>
+    <text x="540" y="160" fill="#4a5570">decisão vigente</text>
+    <text x="540" y="178" fill="#4a5570">CB por transação</text>
+    <text x="540" y="196" fill="#4a5570">suspeita duplicidade</text>
+    <text x="540" y="214" fill="#4a5570">reason code → fraude</text>
+  </g>
+  <!-- gold -->
+  <rect x="696" y="40" width="150" height="214" rx="14" fill="#fff8e1" stroke="#e0b84a"/>
+  <g font-size="12" fill="#0b1430">
+    <text x="710" y="66" font-weight="700">fct_payment_</text>
+    <text x="710" y="82" font-weight="700">attempts</text>
+    <text x="710" y="102" fill="#4a5570">contrato aplicado</text>
+    <text x="710" y="132" font-weight="700">fct_chargebacks</text>
+    <text x="710" y="162" font-weight="700">agg_*_cohort</text>
+    <text x="710" y="180" fill="#4a5570">numeradores e</text>
+    <text x="710" y="198" fill="#4a5570">denominadores</text>
+    <text x="710" y="228" font-weight="700">mon_* (saúde)</text>
+  </g>
+  <!-- semantic -->
+  <rect x="866" y="40" width="124" height="214" rx="14" fill="#dfe9fb" stroke="#0050c3" stroke-width="1.5"/>
+  <g font-size="12" fill="#0b1430">
+    <text x="880" y="66" font-weight="700">Métricas</text>
+    <text x="880" y="84" font-weight="700">certificadas</text>
+    <text x="880" y="110" fill="#4a5570">approval_rate</text>
+    <text x="880" y="128" fill="#4a5570">cb_rate (safra)</text>
+    <text x="880" y="146" fill="#4a5570">fraud_loss</text>
+    <text x="880" y="164" fill="#4a5570">risk_reject_rate</text>
+    <text x="880" y="198" font-size="11" fill="#8a93a8">1 definição,</text>
+    <text x="880" y="213" font-size="11" fill="#8a93a8">versionada em PR</text>
+  </g>
+  <!-- consumo -->
+  <g font-size="12">
+    <rect x="1006" y="40" width="100" height="62" rx="12" fill="#f1f4f9" stroke="#cdd5e2"/>
+    <text x="1018" y="66" font-weight="700" fill="#0b1430">Dashboards</text>
+    <text x="1018" y="86" fill="#4a5570">Risco / Exec</text>
+    <rect x="1006" y="116" width="100" height="62" rx="12" fill="#f1f4f9" stroke="#cdd5e2"/>
+    <text x="1018" y="142" font-weight="700" fill="#0b1430">Notebooks</text>
+    <text x="1018" y="162" fill="#4a5570">analistas</text>
+    <rect x="1006" y="192" width="100" height="62" rx="12" fill="#f1f4f9" stroke="#cdd5e2"/>
+    <text x="1018" y="218" font-weight="700" fill="#0b1430">Reverse ETL</text>
+    <text x="1018" y="238" fill="#4a5570">motor / CRM</text>
+  </g>
+  <!-- arrows -->
+  <g stroke="#8a93a8" stroke-width="1.6" fill="none" marker-end="url(#arr)">
+    <path d="M164 71 L184 71"/><path d="M164 147 L184 147"/><path d="M164 223 L184 223"/>
+    <path d="M336 147 L354 147"/>
+    <path d="M506 147 L524 147"/>
+    <path d="M676 147 L694 147"/>
+    <path d="M846 147 L864 147"/>
+    <path d="M990 71 L1004 71"/><path d="M990 147 L1004 147"/><path d="M990 223 L1004 223"/>
+  </g>
+  <!-- quality gates -->
+  <g font-size="10.5" font-weight="700" fill="#0050c3" font-family="Archivo, sans-serif">
+    <circle cx="345" cy="147" r="0"/>
+  </g>
+  <!-- bands -->
+  <rect x="186" y="290" width="920" height="70" rx="14" fill="#f2f6fe" stroke="#dfe9fb"/>
+  <text x="204" y="318" font-family="Archivo, sans-serif" font-size="12" font-weight="800" fill="#0050c3" letter-spacing="1">QUALIDADE (em todas as camadas)</text>
+  <text x="204" y="340" font-size="12" fill="#4a5570">contrato na entrada · freshness por fonte · testes de schema e regra · unit tests · reconciliação Bronze ↔ Gold · z-score, PSI, aprovação sem avaliação</text>
+  <rect x="186" y="374" width="920" height="70" rx="14" fill="#fff6f6" stroke="#fde4e4"/>
+  <text x="204" y="402" font-family="Archivo, sans-serif" font-size="12" font-weight="800" fill="#c62828" letter-spacing="1">OBSERVABILIDADE E RESPOSTA</text>
+  <text x="204" y="424" font-size="12" fill="#4a5570">resultados de teste gravados (store_failures) → painel de saúde · P1 PagerDuty / P2 Slack com dono · runbook · selo "dado atrasado" no dashboard</text>
+  <rect x="186" y="458" width="920" height="50" rx="14" fill="#f1f4f9" stroke="#e3e8f0"/>
+  <text x="204" y="489" font-family="Archivo, sans-serif" font-size="12" font-weight="800" fill="#0b1430" letter-spacing="1">CI/CD + GOVERNANÇA</text>
+  <text x="400" y="489" font-size="12" fill="#4a5570">git · lint · unit tests · Slim CI · data diff · CODEOWNERS · catálogo e linhagem · PII mascarada</text>
+</svg>
+<div class="fluxo-caption">Fluxo da esquerda para a direita. As faixas inferiores são transversais e atuam em todas as camadas.</div>
+</div>
+
+<div class="section">
+<div class="table-wrap">
+<table>
+<thead><tr><th>Camada</th><th>Responsabilidade</th><th>Regra de ouro</th></tr></thead>
+<tbody>
+<tr><td><strong>Ingestão</strong></td><td>Trazer os eventos das 3 fontes. Transações e avaliações por streaming ou CDC; chargebacks por webhook ou arquivo da adquirente</td><td>Payload fora do contrato vai para a quarentena (DLQ) com alerta. Nunca é descartado em silêncio</td></tr>
+<tr><td><strong>Bronze</strong></td><td>Cópia fiel e append-only, com <code>_ingested_at</code></td><td>Imutável. Permite reprocessar qualquer período e responder "o que sabíamos no dia X"</td></tr>
+<tr><td><strong>Silver</strong></td><td>Tipagem, fuso, enums, deduplicação técnica (staging) e regras reutilizáveis (intermediate)</td><td>Uma linha de staging por linha da fonte. Regra de negócio fica no intermediate, nunca em dashboard</td></tr>
+<tr><td><strong>Gold</strong></td><td>Fatos com grão explícito e agregados aditivos por safra</td><td>Flag sinaliza e não filtra. Taxa não é gravada pronta: guarda-se numerador e denominador</td></tr>
+<tr><td><strong>Semântica</strong></td><td>Métricas oficiais com dono, descrição e versão</td><td>Toda ferramenta lê daqui. Se a métrica não está na camada semântica, ela não é oficial</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+<h3>Ferramentas: dbt como framework, Spark como motor</h3>
+<div class="section">
+<p>dbt e PySpark não competem: o dbt organiza a transformação e o Spark executa. O dbt roda sobre Spark (dbt-databricks) e aceita modelos em PySpark quando SQL não basta. A regra deste case está implementada nos dois e um teste de paridade garante resultado idêntico.</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Camada do problema</th><th>Ferramenta</th><th>Por quê</th></tr></thead>
+<tbody>
+<tr><td>Marts, métricas e testes (escopo deste case)</td><td><strong>dbt</strong> (SQL)</td><td>Contratos, testes unitários, Slim CI, linhagem, docs e camada semântica nativos. SQL é revisável pelo analista de Risco no PR. Troca de warehouse sem reescrever a regra</td></tr>
+<tr><td>Ingestão em streaming dos webhooks de chargeback</td><td><strong>PySpark</strong> Structured Streaming</td><td>Evento contínuo, schema validado na entrada, escrita transacional no Bronze</td></tr>
+<tr><td>Features de velocidade e de grafo para o motor</td><td><strong>PySpark</strong></td><td>Janelas sobre bilhões de eventos e ligações cartão ↔ usuário ↔ dispositivo. Volume e lógica que não cabem bem em SQL de warehouse</td></tr>
+<tr><td>Reprocessamento pesado de safras em Delta</td><td>Os dois</td><td>Mesma regra: <code>dbt-databricks</code> com <code>incremental</code>, ou o job PySpark do repositório com <code>MERGE</code> e <code>replaceWhere</code></td></tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+
+<!-- 04 MODELAGEM -->
+<section id="modelagem">
+<h2><span class="sec-num">04</span>Modelagem e <span class="accent">grão</span></h2>
+<p class="lead">O erro mais caro em fraude é misturar grãos: uma transação pode ter várias avaliações e vários chargebacks. Cada modelo declara o próprio grão, e os joins só acontecem depois que tudo foi reduzido a uma linha por transação.</p>
+
+<div class="fluxo-wrap">
+<svg viewBox="0 0 1120 300" xmlns="http://www.w3.org/2000/svg" font-family="JetBrains Mono, monospace" font-size="11.5" role="img" aria-label="Linhagem dos modelos dbt">
+  <defs><marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#9aa6bd"/></marker></defs>
+  <g fill="#fbf4ea" stroke="#d6b98a">
+    <rect x="10" y="30" width="170" height="34" rx="8"/><rect x="10" y="130" width="170" height="34" rx="8"/><rect x="10" y="230" width="170" height="34" rx="8"/>
+  </g>
+  <g fill="#0b1430"><text x="22" y="52">raw_transactions</text><text x="22" y="152">raw_risk_evaluations</text><text x="22" y="252">raw_chargebacks</text></g>
+  <g fill="#eef1f6" stroke="#9aa6bd">
+    <rect x="215" y="30" width="215" height="34" rx="8"/><rect x="215" y="130" width="215" height="34" rx="8"/><rect x="215" y="230" width="215" height="34" rx="8"/>
+  </g>
+  <g fill="#0b1430"><text x="227" y="52">stg_payments__transactions</text><text x="227" y="152">stg_risk__evaluations</text><text x="227" y="252">stg_acquirer__chargebacks</text></g>
+  <g fill="#ffffff" stroke="#9aa6bd">
+    <rect x="465" y="30" width="245" height="34" rx="8"/><rect x="465" y="130" width="245" height="34" rx="8"/><rect x="465" y="230" width="245" height="34" rx="8"/>
+  </g>
+  <g fill="#0b1430"><text x="477" y="52">int_transactions__duplicate_…</text><text x="477" y="152">int_risk__decision_per_tx</text><text x="477" y="252">int_chargebacks__per_tx</text></g>
+  <g fill="#fff8e1" stroke="#e0b84a">
+    <rect x="745" y="105" width="185" height="40" rx="8" stroke-width="2"/><rect x="745" y="230" width="185" height="34" rx="8"/>
+  </g>
+  <g fill="#0b1430" font-weight="600"><text x="757" y="130">fct_payment_attempts</text></g>
+  <g fill="#0b1430"><text x="757" y="252">fct_chargebacks</text></g>
+  <g fill="#dfe9fb" stroke="#0050c3">
+    <rect x="960" y="20" width="150" height="30" rx="8"/><rect x="960" y="60" width="150" height="30" rx="8"/><rect x="960" y="100" width="150" height="30" rx="8"/><rect x="960" y="140" width="150" height="30" rx="8"/><rect x="960" y="180" width="150" height="30" rx="8"/>
+  </g>
+  <g fill="#0b1430" font-size="10.5"><text x="970" y="40">agg_cb_cohort_daily</text><text x="970" y="80">agg_approval_daily</text><text x="970" y="120">agg_risk_rule_perf</text><text x="970" y="160">mon_daily_risk_health</text><text x="970" y="200">semantic: metrics</text></g>
+  <g stroke="#9aa6bd" stroke-width="1.4" fill="none" marker-end="url(#a2)">
+    <path d="M180 47 H213"/><path d="M180 147 H213"/><path d="M180 247 H213"/>
+    <path d="M430 47 H463"/><path d="M430 147 H463"/><path d="M430 247 H463"/>
+    <path d="M430 52 C450 90, 450 120, 463 140"/>
+    <path d="M710 47 C730 60, 730 110, 743 118"/><path d="M710 147 H743"/><path d="M710 247 C730 220, 730 150, 743 135"/>
+    <path d="M430 252 C600 290, 650 260, 743 252"/>
+    <path d="M930 118 C945 90, 945 40, 958 35"/><path d="M930 122 C945 100, 945 80, 958 75"/><path d="M930 125 H958"/><path d="M930 128 C945 140, 945 150, 958 155"/><path d="M930 131 C945 160, 945 190, 958 195"/>
+  </g>
+</svg>
+<div class="fluxo-caption">Linhagem real do protótipo (<code>dbt docs generate</code>). Bronze em bege, Silver em cinza, Gold em amarelo, consumo em azul.</div>
+</div>
+
+<div class="section">
+<div class="table-wrap">
+<table>
+<thead><tr><th>Modelo</th><th>Grão</th><th>Decisão de modelagem</th></tr></thead>
+<tbody>
+<tr><td><code>int_risk__decision_per_tx</code></td><td>1 por transação</td><td>A decisão que vale é a <strong>última avaliação até a autorização</strong>, com 5s de tolerância de relógio. Uma nova avaliação depois da autorização é contada, mas não decide</td></tr>
+<tr><td><code>int_chargebacks__per_tx</code></td><td>1 por transação com CB</td><td>Soma chargebacks parciais e múltiplos. Separa o valor de fraude do valor total pelo reason code da bandeira (tabela de referência, não o sufixo textual)</td></tr>
+<tr><td><code>int_transactions__duplicate_…</code></td><td>1 por transação suspeita</td><td>Mesmo usuário, valor e método em até 60s. Indica a primeira transação do grupo, sem remover nada</td></tr>
+<tr class="highlight"><td><code>fct_payment_attempts</code></td><td>1 por tentativa</td><td>Fonte única: funil, decisão, origem da recusa, desfecho de chargeback e flags de qualidade. <strong>Contrato aplicado</strong> (tipos e PK)</td></tr>
+<tr><td><code>fct_chargebacks</code></td><td>1 por evento de CB</td><td>Base da Perda Bruta pela data de notificação (visão de caixa) e da curva de maturação. Mantém órfãos sinalizados</td></tr>
+<tr><td><code>agg_chargeback_cohort_daily</code></td><td>safra × método</td><td>Só somas aditivas. Inclui <code>cohort_age_days</code> e <code>is_mature</code> para o dashboard nunca comparar safra madura com imatura</td></tr>
+</tbody>
+</table>
+</div>
+
+<p class="code-label">models/marts/fct_payment_attempts.sql · origem da recusa</p>
+<pre><code><span class="k">case</span>
+    <span class="k">when</span> transactions.status = <span class="s">'approved'</span> <span class="k">then</span> <span class="k">null</span>
+    <span class="k">when</span> transactions.status = <span class="s">'error'</span> <span class="k">then</span> <span class="s">'technical_error'</span>
+    <span class="k">when</span> risk.risk_action = <span class="s">'reject'</span> <span class="k">then</span> <span class="s">'risk_engine'</span>
+    <span class="k">when</span> risk.transaction_id <span class="k">is null</span> <span class="k">then</span> <span class="s">'unknown_no_risk_evaluation'</span>
+    <span class="k">else</span> <span class="s">'issuer_or_acquirer'</span>
+<span class="k">end as</span> decline_source,
+
+<span class="c">-- flags de qualidade: nunca filtram, só sinalizam</span>
+transactions.is_approved <span class="k">and</span> risk.transaction_id <span class="k">is null</span>  <span class="k">as</span> is_approved_without_risk_evaluation,
+coalesce(duplicates.is_duplicate_candidate, <span class="k">false</span>)       <span class="k">as</span> is_duplicate_candidate,</code></pre>
+</div>
+</section>
+
+<!-- 05 INCREMENTAL -->
+<section id="incremental">
+<h2><span class="sec-num">05</span>Safra e reprocessamento <span class="accent">incremental</span></h2>
+<p class="lead">O enunciado pede para reprocessar os últimos 90 dias a cada chargeback novo. Proponho reprocessar <strong>as chaves e safras afetadas</strong> pelos eventos novos. O resultado é igual ou mais correto, e o custo é bem menor.</p>
+
+<div class="two-col">
+  <div class="section">
+    <h3>Janela fixa de 90 dias</h3>
+    <ul>
+      <li>Recalcula cerca de 90 partições a cada execução, mesmo que só uma tenha mudado</li>
+      <li><strong>Perde o chargeback de D+91 a D+120</strong>: a safra já saiu da janela</li>
+      <li>O custo cresce linearmente com o volume do período inteiro</li>
+    </ul>
+  </div>
+  <div class="section" style="border-color: var(--primary-soft); background: var(--primary-tint);">
+    <h3>Chaves afetadas (implementado)</h3>
+    <ul>
+      <li>Watermark de <code>_ingested_at</code> por fonte</li>
+      <li>Evento novo em qualquer fonte reabre a transação, e a transação reabre a safra</li>
+      <li>Chargeback de D+120 vai para a safra certa, com a flag <code>is_beyond_maturity_window</code></li>
+      <li>O full refresh periódico (semanal) fica como rede de segurança</li>
+    </ul>
+  </div>
+</div>
+
+<div class="callout">
+  <div class="callout-label">Compatível com o requisito de 90 dias</div>
+  <p>O enunciado pede que as safras dos últimos 90 dias sejam atualizadas retroativamente sempre que chega um chargeback. Isso continua valendo: toda safra afetada dentro dos 90 dias é reprocessada. A diferença é que a seleção vem do evento e não do calendário. Por isso não sobra trabalho inútil e a cauda depois dos 90 dias não se perde.</p>
+</div>
+
+<h3>O que dispara o reprocessamento</h3>
+<div class="etapa-list">
+  <div class="etapa-item"><div class="etapa-item-num">01</div><div class="etapa-item-body"><h4>Chegada do evento</h4><p>O webhook ou arquivo da adquirente pousa no Bronze. Um sensor do orquestrador (asset ou dataset sensor no Airflow/Dagster, file arrival trigger no Databricks Workflows) detecta a partição nova.</p></div></div>
+  <div class="etapa-item"><div class="etapa-item-num">02</div><div class="etapa-item-body"><h4>Execução seletiva</h4><p><code>dbt build --select +agg_chargeback_cohort_daily</code>, ou o job PySpark equivalente. Só as chaves acima do watermark entram, então o custo da execução fica proporcional ao lote.</p></div></div>
+  <div class="etapa-item"><div class="etapa-item-num">03</div><div class="etapa-item-body"><h4>Publicação auditada</h4><p>Testes bloqueantes (reconciliação, PK, contrato) rodam antes da troca. Se falharem, o consumidor continua com a última versão boa.</p></div></div>
+  <div class="etapa-item"><div class="etapa-item-num">04</div><div class="etapa-item-body"><h4>Redes de segurança</h4><p>Micro-batch a cada 15 minutos, caso um evento escape do sensor. Full refresh semanal comparado com o incremental: diferença entre os dois é bug.</p></div></div>
+</div>
+
+<p class="code-label">models/marts/fct_payment_attempts.sql · seleção incremental</p>
+<pre><code>{{ config(materialized=<span class="s">'incremental'</span>, incremental_strategy=<span class="s">'delete+insert'</span>, unique_key=<span class="s">'transaction_id'</span>) }}
+
+<span class="k">select</span> * <span class="k">from</span> {{ ref(<span class="s">'stg_payments__transactions'</span>) }}
+{% <span class="k">if</span> is_incremental() %}
+<span class="k">where</span> transaction_id <span class="k">in</span> (
+    <span class="k">select</span> transaction_id <span class="k">from</span> {{ ref(<span class="s">'stg_payments__transactions'</span>) }}
+    <span class="k">where</span> _ingested_at &gt; (<span class="k">select</span> max(_tx_watermark) <span class="k">from</span> {{ this }})
+    <span class="k">union</span>
+    <span class="k">select</span> transaction_id <span class="k">from</span> {{ ref(<span class="s">'stg_risk__evaluations'</span>) }}
+    <span class="k">where</span> _ingested_at &gt; (<span class="k">select</span> max(_eval_watermark) <span class="k">from</span> {{ this }})
+    <span class="k">union</span>
+    <span class="k">select</span> transaction_id <span class="k">from</span> {{ ref(<span class="s">'stg_acquirer__chargebacks'</span>) }}   <span class="c">-- CB de D+120 reabre a tx de D-120</span>
+    <span class="k">where</span> _ingested_at &gt; (<span class="k">select</span> max(_cb_watermark) <span class="k">from</span> {{ this }})
+)
+{% <span class="k">endif</span> %}</code></pre>
+
+<p class="code-label">spark/fraud_risk_spark/transformations.py · mesma regra em PySpark (testada contra o dbt)</p>
+<pre><code><span class="k">def</span> affected_transaction_ids(transactions, evaluations, chargebacks, since: Watermarks):
+    """Toda transação que recebeu evento novo em QUALQUER fonte desde o último run."""
+    <span class="k">return</span> (
+        transactions.where(F.col("_ingested_at") &gt; F.lit(since.transactions)).select("transaction_id")
+        .unionByName(evaluations.where(F.col("_ingested_at") &gt; F.lit(since.evaluations)).select("transaction_id"))
+        .unionByName(chargebacks.where(F.col("_ingested_at") &gt; F.lit(since.chargebacks)).select("transaction_id"))
+        .distinct()
+    )</code></pre>
+<p class="code-label">Execução incremental em produção (Databricks / Delta) · spark/fraud_risk_spark/io_delta.py</p>
+<pre><code>ids = T.affected_transaction_ids(tx, ev, cb, since)
+changed = T.build_payment_attempts(tx, ev, cb, only_transaction_ids=ids)   <span class="c"># só chaves afetadas</span>
+cohorts = T.affected_cohorts(changed)                                      <span class="c"># safras dessas chaves</span>
+
+io_delta.merge_payment_attempts(spark, changed, "gold.fct_payment_attempts")     <span class="c"># MERGE por transaction_id</span>
+io_delta.replace_cohorts(                                                        <span class="c"># replaceWhere só nas safras</span>
+    T.build_cohort_aggregate(spark.table("gold.fct_payment_attempts"), as_of, cohorts),
+    "gold.agg_chargeback_cohort_daily", cohorts,
+)</code></pre>
+
+<div class="callout">
+  <div class="callout-label">Maturidade de safra no dashboard</div>
+  <p>A taxa de chargeback de uma safra com 15 dias está <strong>estruturalmente subestimada</strong>. O agregado traz <code>cohort_age_days</code> e <code>is_mature</code>. O dashboard executivo mostra a safra imatura com marcação visual e, depois de um trimestre de histórico, com a <strong>perda projetada</strong> (CB observado dividido pelo percentual esperado de maturação, calculado em <code>mon_chargeback_maturation_curve</code>).</p>
+</div>
+</section>
+
+<!-- 06 QUALIDADE -->
+<section id="qualidade">
+<h2><span class="sec-num">06</span>Qualidade e <span class="accent">erros silenciosos</span></h2>
+<p class="lead">Teste de schema pega o dado quebrado. O que causou falso alerta e perda não detectada no contexto do case foi <strong>dado válido com comportamento errado</strong>. Por isso a qualidade tem três linhas de defesa.</p>
+
+<div class="card-grid">
+  <div class="card"><div class="card-kicker">1</div><h4>Na entrada: contrato</h4><p>Schema, tipos, enums, fuso e moeda são validados no payload. O que viola o contrato vai para a quarentena com alerta ao produtor e não chega ao Bronze.</p></div>
+  <div class="card"><div class="card-kicker">2</div><h4>No pipeline: testes</h4><p>Unicidade, nulos, faixa, integridade referencial, reconciliação Bronze ↔ Gold e testes unitários da lógica. A severidade depende de quem errou.</p></div>
+  <div class="card"><div class="card-kicker">3</div><h4>No comportamento: monitores</h4><p>Volume, taxa de recusa do motor, aprovação sem avaliação, distribuição do score (PSI) e atraso de cada feed. Comparação com baseline de 28 dias.</p></div>
+</div>
+
+<div class="callout red">
+  <div class="callout-label">O erro silencioso mais perigoso deste domínio</div>
+  <p>Se o feed de chargebacks da adquirente para, <strong>a taxa de chargeback melhora sozinha</strong>. Ninguém reclama de uma boa notícia. O monitor de freshness do feed de chargeback é o P1 mais importante do projeto: 2 dias sem evento geram aviso e 4 dias geram incidente.</p>
+</div>
+
+<div class="section">
+<h3>Política de severidade</h3>
+<p>Se o <strong>pipeline</strong> está errado (reconciliação, PK, contrato do Gold), o teste <strong>bloqueia a publicação</strong>. Se a <strong>fonte</strong> mandou algo anômalo mas válido (duplicata, aprovação sem avaliação), a linha entra sinalizada e o teste <strong>alerta o dono da fonte</strong>. Parar o Gold por causa de uma duplicata deixaria o time de Risco sem dado nenhum.</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Teste / monitor</th><th>O que pega</th><th>No case</th><th>Severidade</th></tr></thead>
+<tbody>
+<tr><td><code>assert_approved_transactions_have_risk_evaluation</code></td><td>Aprovação sem avaliação do motor (motor aprovou sem avaliar ou evento perdido)</td><td><strong>tx_1005</strong></td><td><span class="badge badge-warn">warn &gt; 0</span> <span class="badge badge-err">erro &gt; 10</span></td></tr>
+<tr><td><code>assert_no_duplicate_payment_candidates</code></td><td>Reentrega do gateway ou cobrança em dobro</td><td><strong>tx_1005</strong></td><td><span class="badge badge-warn">warn</span></td></tr>
+<tr><td><code>assert_reconciliation_chargeback_amount</code></td><td>Centavo de chargeback perdido ou duplicado entre Bronze e Gold</td><td>ok</td><td><span class="badge badge-err">bloqueia</span></td></tr>
+<tr><td><code>assert_reconciliation_cohort_vs_fact</code></td><td>Safra não reprocessada no incremental</td><td>ok</td><td><span class="badge badge-err">bloqueia</span></td></tr>
+<tr><td><code>assert_no_approved_despite_risk_reject</code></td><td>Motor rejeitou e a transação foi aprovada (override sem trilha)</td><td>ok</td><td><span class="badge badge-err">bloqueia</span></td></tr>
+<tr><td><code>assert_risk_evaluation_not_after_authorization</code></td><td>Relógios dessincronizados ou decisão errada atribuída</td><td>ok</td><td><span class="badge badge-err">bloqueia</span></td></tr>
+<tr><td><code>assert_no_orphan_chargebacks</code></td><td>Chargeback sem transação: entra na perda, mas some da safra</td><td>ok</td><td><span class="badge badge-warn">warn</span></td></tr>
+<tr><td><code>assert_chargebacks_only_on_approved</code></td><td>Status errado na origem ou id trocado</td><td>ok</td><td><span class="badge badge-warn">warn</span></td></tr>
+<tr><td>source freshness <code>raw_chargebacks</code></td><td>Feed da adquirente parado</td><td>ok</td><td><span class="badge badge-warn">2 dias</span> <span class="badge badge-err">4 dias</span></td></tr>
+<tr><td><code>mon_daily_risk_health</code></td><td>z-score de volume e de recusa do motor, % sem avaliação</td><td><strong>P1_fail_open_motor</strong></td><td><span class="badge badge-info">roteamento</span></td></tr>
+<tr><td>PSI do <code>risk_score</code></td><td>Drift do modelo ou da população: regra disparando fora do padrão gera falso alerta de fraude</td><td>precisa de histórico</td><td><span class="badge badge-warn">&gt; 0,10</span> <span class="badge badge-err">&gt; 0,25</span></td></tr>
+</tbody>
+</table>
+</div>
+<p>Todo resultado de teste é gravado (<code>store_failures</code>) no schema <code>audit</code>. As linhas que falharam ficam consultáveis e alimentam o painel de saúde, o que dispensa caçar log.</p>
+</div>
+
+<div class="section">
+<h3>Testes unitários da lógica</h3>
+<p>Rodam no CI com dado fixo, antes de tocar o warehouse. Cobrem as regras em que um erro custa dinheiro:</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Unit test</th><th>Garante que</th></tr></thead>
+<tbody>
+<tr><td><code>cohort_attribution_uses_transaction_date_not_chargeback_date</code></td><td>CB de D+14 e de D+120 contam na safra da transação, e Pix fica fora da elegibilidade</td></tr>
+<tr><td><code>decline_source_and_silent_failure_flags</code></td><td>Recusa atribuída à origem certa; aprovada sem avaliação sinalizada; erro técnico não conta como recusa do motor</td></tr>
+<tr><td><code>risk_decision_is_last_pre_authorization_evaluation</code></td><td>Uma nova avaliação depois da autorização não substitui a decisão vigente</td></tr>
+<tr><td><code>chargeback_reason_code_classification</code></td><td>10.4 e 4837 são fraude, 13.1 não é, e código desconhecido vira <code>unmapped</code> com alerta</td></tr>
+<tr><td><code>duplicate_suspects_only_within_60_seconds</code></td><td>tx_1004 e tx_1005 são suspeitas; nova tentativa 5 minutos depois não é</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+
+<!-- 07 CICD -->
+<section id="cicd">
+<h2><span class="sec-num">07</span><span class="accent">CI/CD</span></h2>
+<p class="lead">Nenhuma mudança chega à produção sem passar por lint, testes da lógica, build dos modelos afetados e diff de impacto nas métricas certificadas.</p>
+<div class="etapa-list">
+  <div class="etapa-item"><div class="etapa-item-num">01</div><div class="etapa-item-body"><h4>Pull request com CODEOWNERS</h4><p>Mudança em <code>marts/</code> ou <code>semantic/</code> exige revisão do time de Risco. Mudança em <code>contracts/</code> exige o produtor (adquirentes ou motor).</p></div></div>
+  <div class="etapa-item"><div class="etapa-item-num">02</div><div class="etapa-item-body"><h4>Lint e compilação</h4><p><code>sqlfluff</code> só nos arquivos alterados e <code>dbt parse</code>, que valida camada semântica e contratos.</p></div></div>
+  <div class="etapa-item"><div class="etapa-item-num">03</div><div class="etapa-item-body"><h4>Testes unitários</h4><p><code>dbt test --select test_type:unit</code>: a lógica de safra, de recusa e de reason code é provada com fixture. É rápido e não toca dado real.</p></div></div>
+  <div class="etapa-item"><div class="etapa-item-num">04</div><div class="etapa-item-body"><h4>Slim CI em schema efêmero</h4><p><code>dbt build --select state:modified+ --defer</code>: constrói só o que mudou e o que depende disso, lendo o resto de produção. O custo fica proporcional ao PR.</p></div></div>
+  <div class="etapa-item"><div class="etapa-item-num">05</div><div class="etapa-item-body"><h4>Data diff de métricas</h4><p>Recce ou Datafold comentam no PR o impacto, por exemplo "approval_rate da safra 01/03 muda de 80% para 75%". Mudança de número não declarada na descrição do PR bloqueia o merge.</p></div></div>
+  <div class="etapa-item"><div class="etapa-item-num">06</div><div class="etapa-item-body"><h4>Deploy write-audit-publish</h4><p>Depois do merge, o build roda em staging, os testes de bloqueio passam e só então ocorre a troca atômica para produção. Se algum teste falhar, o consumidor continua vendo a última versão boa e nunca uma versão pela metade.</p></div></div>
+</div>
+</section>
+
+<!-- 08 CONTRATOS -->
+<section id="contratos">
+<h2><span class="sec-num">08</span>Data <span class="accent">contracts</span></h2>
+<p class="lead">Metade das armadilhas do case vem de acordos que não existem com quem produz o dado. O contrato torna isso explícito, versionado e verificável dos dois lados.</p>
+<div class="two-col">
+<div class="section">
+<h3>Contrato de entrada (produtor → dados)</h3>
+<p>Formato ODCS v3 em <code>contracts/</code>, um por produtor. A v2 proposta resolve:</p>
+<ul>
+<li><strong>Adquirentes:</strong> <code>reason_code</code> separado da bandeira, timestamp com offset, <code>currency</code>, <code>dispute_stage</code> (habilita perda líquida)</li>
+<li><strong>Motor de risco:</strong> <code>risk_score</code> inteiro, <code>decision_source</code> incluindo <code>fallback_timeout</code> (aprovação após timeout fica explícita), <code>model_version</code>, <code>is_holdout</code> (grupo de controle)</li>
+<li>SLA de latência, freshness, dono e canal de suporte</li>
+</ul>
+</div>
+<div class="section">
+<h3>Contrato de saída (dados → consumidores)</h3>
+<p><code>fct_payment_attempts</code> com <code>contract: enforced</code>: tipos e PK são verificados no build, e mudar uma coluna quebra o CI.</p>
+<ul>
+<li><strong>Não quebra:</strong> nova coluna, nova métrica, novo valor de enum documentado</li>
+<li><strong>Quebra:</strong> renomear ou remover coluna, mudar tipo, mudar grão, mudar a definição de métrica certificada. Exige nova versão do modelo (<code>v2</code>), 30 dias de convivência e aviso aos consumidores</li>
+</ul>
+</div>
+</div>
+<p class="code-label">contracts/acquirer_chargebacks.odcs.yaml (trecho)</p>
+<pre><code>- <span class="k">name</span>: dispute_stage
+  <span class="k">logicalType</span>: string
+  <span class="k">required</span>: <span class="w">true</span>
+  <span class="k">description</span>: <span class="s">first_chargeback | representment | pre_arbitration | arbitration | reversed</span>
+<span class="k">quality</span>:
+  - <span class="k">rule</span>: freshness
+    <span class="k">description</span>: <span class="s">Feed sem novo evento por mais de 2 dias úteis = provável quebra de integração.</span>
+  - <span class="k">rule</span>: referentialIntegrity
+    <span class="k">description</span>: <span class="s">"% de chargebacks órfãos (sem transação) &lt; 0,5%."</span></code></pre>
+</section>
+
+<!-- 09 OPERACAO -->
+<section id="operacao">
+<h2><span class="sec-num">09</span>Observabilidade e <span class="accent">SLAs</span></h2>
+<p class="lead">SLA sem dono e sem runbook é só um desejo. Cada dataset tem nível de criticidade, alvo mensurável, canal e ação esperada.</p>
+<div class="section">
+<div class="table-wrap">
+<table>
+<thead><tr><th>Ativo</th><th>Nível</th><th>Freshness</th><th>Disponível até</th><th>Dono</th></tr></thead>
+<tbody>
+<tr><td><code>fct_payment_attempts</code>, métricas de aprovação</td><td><span class="badge badge-err">Tier 1</span></td><td>&lt; 1h (intradiário)</td><td>D-0, 07:00 BRT para o fechamento</td><td>AE Risk</td></tr>
+<tr><td><code>agg_chargeback_cohort_daily</code>, perda por fraude</td><td><span class="badge badge-err">Tier 1</span></td><td>&lt; 24h após o evento</td><td>D-0, 07:00 BRT</td><td>AE Risk</td></tr>
+<tr><td>Feed <code>raw_chargebacks</code></td><td><span class="badge badge-err">Tier 1</span></td><td>evento em &lt; 2 dias</td><td>contínuo</td><td>Integrações (produtor)</td></tr>
+<tr><td><code>agg_risk_rule_performance</code></td><td><span class="badge badge-warn">Tier 2</span></td><td>&lt; 24h</td><td>D-1</td><td>AE Risk</td></tr>
+<tr><td>Monitores <code>mon_*</code></td><td><span class="badge badge-warn">Tier 2</span></td><td>a cada execução</td><td>contínuo</td><td>AE Risk</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="card-grid">
+  <div class="card"><div class="card-kicker">P1</div><h4>PagerDuty, resposta em 30 min</h4><ul><li>Aprovadas sem avaliação &gt; 1%</li><li>Feed de chargeback parado há mais de 4 dias</li><li>Reconciliação Bronze ↔ Gold quebrada</li><li>Publicação do Tier 1 atrasada</li></ul></div>
+  <div class="card"><div class="card-kicker">P2</div><h4>Slack #data-risk-incidents, mesmo dia</h4><ul><li>|z| &gt; 3 em volume ou em recusa do motor</li><li>PSI do score &gt; 0,10</li><li>Duplicidade ou chargeback órfão acima do baseline</li></ul></div>
+  <div class="card"><div class="card-kicker">↺</div><h4>Ciclo de incidente</h4><ul><li>Dashboard ganha selo "dado em revisão" automaticamente</li><li>Runbook por alerta (o que checar e quem acionar)</li><li>Post-mortem sem culpa; vira teste novo</li></ul></div>
+</div>
+<p>Indicadores do próprio time, revisados mensalmente: percentual de SLA cumprido por tier, MTTD (incidentes detectados por nós antes do consumidor), MTTR e número de alertas sem ação (ruído a eliminar).</p>
+</section>
+
+<!-- 10 MATERIALIZACAO -->
+<section id="materializacao">
+<h2><span class="sec-num">10</span>Materialização no <span class="accent">warehouse</span></h2>
+<p class="lead">A materialização segue o padrão de leitura e de mudança de cada modelo. O objetivo é custo proporcional ao que mudou e leitura barata para o que é consultado o dia inteiro.</p>
+<div class="section">
+<div class="table-wrap">
+<table>
+<thead><tr><th>Modelo</th><th>Materialização</th><th>Partição / cluster</th><th>Racional</th></tr></thead>
+<tbody>
+<tr><td>staging, intermediate</td><td>view (ephemeral se for muito usado)</td><td>herdada do Bronze</td><td>Sem custo de armazenamento e sempre atual. Só vira tabela se o profiling mostrar gargalo</td></tr>
+<tr><td><code>fct_payment_attempts</code></td><td>incremental, merge por <code>transaction_id</code></td><td>dia de <code>cohort_date</code> / <code>payment_method</code>, <code>user_id</code></td><td>Chaves afetadas por watermark. Pruning por safra nas consultas de cohort; cluster por usuário para investigação</td></tr>
+<tr><td><code>fct_chargebacks</code></td><td>incremental, append + merge</td><td>dia de <code>chargeback_date</code></td><td>Visão de caixa e financeiro por data de notificação</td></tr>
+<tr><td><code>agg_chargeback_cohort_daily</code></td><td>incremental, overwrite das partições afetadas</td><td>dia de <code>cohort_date</code></td><td>BigQuery <code>insert_overwrite</code>, Delta <code>replaceWhere</code>, Snowflake <code>delete+insert</code></td></tr>
+<tr><td>Snapshot "como reportado"</td><td>snapshot diário do agregado</td><td>data do snapshot</td><td>Responde "por que o número de março mudou?". A safra amadurece e o histórico do que foi reportado fica auditável</td></tr>
+<tr><td>Métricas</td><td>camada semântica (consulta sob demanda), com cache</td><td>n/a</td><td>Não grava taxa. Calcula razão de somas no recorte pedido</td></tr>
+</tbody>
+</table>
+</div>
+<p>Full refresh semanal agendado em janela de baixo uso, como rede de segurança contra deriva do incremental. A diferença entre o incremental e o full refresh é monitorada: se ela existir, há bug.</p>
+<p><strong>Custo como métrica de operação:</strong> o incremental por chave afetada deixa o custo proporcional ao lote e não ao histórico, e o particionamento por safra limita o que cada consulta lê. Bytes processados e custo por execução de cada modelo ficam num painel, com alerta quando um modelo dobra de custo sem mudança de código (sinal de partição ignorada ou de join que explodiu).</p>
+</div>
+</section>
+
+<!-- 11 CONSUMO -->
+<section id="consumo">
+<h2><span class="sec-num">11</span>Consumo pelos <span class="accent">usuários</span></h2>
+<p class="lead">O objetivo do case é que Risco e executivos vejam o mesmo número. Isso se resolve na forma de consumo, além do modelo.</p>
+<div class="card-grid">
+  <div class="card"><h4>Camada semântica como única porta</h4><p>Dashboard, notebook e planilha leem as mesmas métricas (<code>approval_rate</code>, <code>chargeback_rate_amount</code>, <code>gross_fraud_loss</code>). Uma consulta SQL solta pode existir para exploração, mas não é número oficial.</p></div>
+  <div class="card"><h4>Painel executivo</h4><p>Aprovação e perda por fraude lado a lado, porque um número sobe quando o outro cai. A safra imatura aparece marcada, nunca comparada como se estivesse fechada. A origem da recusa responde se a queda de conversão veio do motor ou do emissor.</p></div>
+  <div class="card"><h4>Painel de Risco</h4><p>Performance por regra e por faixa de score, falso negativo em R$, recusa por regra (custo de conversão) e curva de maturação. Drill-down até a transação para investigação.</p></div>
+  <div class="card"><h4>Painel de saúde do dado</h4><p>Freshness por fonte, testes que falharam e monitores. O consumidor sabe se pode confiar no número de hoje antes de levá-lo para uma reunião.</p></div>
+  <div class="card"><h4>Documentação e catálogo</h4><p>Glossário de métricas com fórmula, dono e exemplos, gerado do próprio código (<code>dbt docs</code> ou catálogo corporativo) para não envelhecer.</p></div>
+  <div class="card"><h4>Acesso e LGPD</h4><p><code>user_id</code> marcado como PII e mascarado por padrão. Acesso ao dado nominal só para investigação de fraude, com papel específico e trilha de auditoria.</p></div>
+</div>
+</section>
+
+<!-- 12 PROTOTIPO -->
+<section id="prototipo">
+<h2><span class="sec-num">12</span>Protótipo <span class="accent">executável</span></h2>
+<p class="lead">Tudo o que está neste documento roda localmente: o dbt em cerca de 10 segundos e o PySpark em cerca de 30. O repositório <code>fraud-risk-analytics/</code> acompanha esta apresentação.</p>
+<div class="section">
+<pre><code>pip install -r requirements.txt &amp;&amp; export DBT_PROFILES_DIR=.
+dbt seed                                    <span class="c"># Bronze: as 5 transações, 4 avaliações e 1 chargeback do case</span>
+dbt build --exclude resource_type:seed      <span class="c"># 15 modelos, 42 testes de dado, 5 unit tests</span>
+python scripts/simulate_late_chargeback.py  <span class="c"># chargeback D+120 reabre só a safra afetada</span>
+python -m pytest spark/tests                <span class="c"># PySpark: paridade com o dbt + regras críticas</span></code></pre>
+<div class="terminal"><span class="ok">PASS</span> fct_payment_attempts::decline_source_and_silent_failure_flags
+<span class="ok">PASS</span> agg_chargeback_cohort_daily::cohort_attribution_uses_transaction_date_not_chargeback_date
+<span class="ok">PASS</span> assert_reconciliation_chargeback_amount
+<span class="ok">PASS</span> assert_reconciliation_cohort_vs_fact
+<span class="warn">WARN 1</span> assert_approved_transactions_have_risk_evaluation   <span class="dim">-- tx_1005</span>
+<span class="warn">WARN 1</span> assert_no_duplicate_payment_candidates              <span class="dim">-- tx_1005 duplicata de tx_1004</span>
+<span class="dim">Done.</span> <span class="ok">PASS=60</span> <span class="warn">WARN=2</span> ERROR=0 SKIP=0 TOTAL=62
+
+<span class="dim">$ python -m pytest spark/tests</span>
+<span class="ok">PASS</span> test_payment_attempts_match_dbt                    <span class="dim">-- fato idêntico ao do dbt</span>
+<span class="ok">PASS</span> test_cohort_aggregate_matches_dbt                  <span class="dim">-- agregado por safra idêntico</span>
+<span class="ok">PASS</span> test_silent_failures_are_flagged_not_dropped
+<span class="ok">PASS</span> test_late_chargeback_reopens_only_affected_cohort
+<span class="ok">4 passed</span></div>
+
+<h3>Simulação: chargeback de D+120 (fora da janela de 90 dias)</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Safra 01/03 · cartão</th><th class="num">Aprovado R$</th><th class="num">CB R$</th><th class="num">CB rate R$</th><th>Safra reprocessada</th></tr></thead>
+<tbody>
+<tr><td>Antes (só cb_901, D+14)</td><td class="num">850,00</td><td class="num">150,00</td><td class="num">17,65%</td><td>—</td></tr>
+<tr class="highlight"><td>Depois (cb_902 de tx_1004, D+120)</td><td class="num">850,00</td><td class="num">500,00</td><td class="num">58,82%</td><td>só 01/03 (a safra Pix não mudou)</td></tr>
+</tbody>
+</table>
+</div>
+<p>Com a janela fixa de 90 dias, esse chargeback de R$ 350 ficaria fora do Gold e a safra continuaria em 17,65%. A perda não seria identificada a tempo, exatamente como o contexto do case descreve.</p>
+</div>
+
+<div class="section">
+<h3>Estrutura do repositório</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Caminho</th><th>Conteúdo</th></tr></thead>
+<tbody>
+<tr><td><code>models/staging · intermediate · marts</code></td><td>Silver e Gold com grão declarado. O fato principal tem contrato aplicado</td></tr>
+<tr><td><code>models/monitoring</code></td><td><code>mon_daily_risk_health</code> (z-score, alerta) e <code>mon_chargeback_maturation_curve</code></td></tr>
+<tr><td><code>models/semantic</code></td><td>Semantic models e 7 métricas, entre oficiais e propostas</td></tr>
+<tr><td><code>models/_unit_tests.yml</code> · <code>tests/singular</code></td><td>5 unit tests e 9 testes de erro silencioso e reconciliação</td></tr>
+<tr><td><code>contracts/</code></td><td>Contratos ODCS v3 com as adquirentes e com o motor de risco</td></tr>
+<tr><td><code>.github/workflows/ci.yml</code> · <code>CODEOWNERS</code></td><td>Pipeline de CI e dono por camada</td></tr>
+<tr><td><code>spark/</code></td><td>Mesma lógica em PySpark: transformações puras, I/O Delta (<code>MERGE</code>, <code>replaceWhere</code>) e testes de paridade com o dbt</td></tr>
+<tr><td><code>docs/decisoes.md</code></td><td>Decisões com alternativas, premissas, limiares e perguntas para Risco</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+
+<!-- 13 ROADMAP -->
+<section id="roadmap">
+<h2><span class="sec-num">13</span>Roadmap e <span class="accent">perguntas para Risco</span></h2>
+<div class="card-grid">
+  <div class="card"><div class="card-kicker">30 dias</div><h4>Confiança no número</h4><ul><li>Fato e agregados por safra em produção, com métrica oficial do contrato</li><li>Freshness por fonte e reconciliação bloqueante</li><li>Monitor de aprovação sem avaliação</li><li>Glossário aprovado por Risco e por um executivo</li></ul></div>
+  <div class="card"><div class="card-kicker">60 dias</div><h4>Fim da divergência</h4><ul><li>Camada semântica como única fonte dos dashboards</li><li>Origem da recusa no painel de conversão</li><li>Contrato v2 negociado com adquirentes e motor</li><li>Painel de saúde do dado e runbooks</li></ul></div>
+  <div class="card"><div class="card-kicker">90 dias</div><h4>Inteligência de risco</h4><ul><li>Curva de maturação real e perda projetada</li><li>PSI e performance por versão de modelo</li><li>Grupo de controle para medir falso positivo</li><li>Perda líquida com o estágio da disputa</li></ul></div>
+</div>
+
+<div class="section">
+<h3>Perguntas que levo para o time de Risco</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>#</th><th>Pergunta</th><th>O que muda com a resposta</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>Perda Bruta por Fraude soma todos os chargebacks ou só os de motivo fraude?</td><td>Headline do painel executivo e meta do motor</td></tr>
+<tr><td>2</td><td><code>tx_1004</code> e <code>tx_1005</code> são reentrega técnica ou cobrança em dobro?</td><td>Correção de dado (deduplicar) ou de produto (estorno e chargeback evitável)</td></tr>
+<tr><td>3</td><td>O motor tem fallback que aprova em caso de timeout?</td><td>Aprovação após timeout vira decisão explícita e com meta</td></tr>
+<tr><td>4</td><td>Existe ou pode existir um grupo de controle aprovado sem regras?</td><td>Sem ele, o custo em conversão das regras (falso positivo) não é mensurável</td></tr>
+<tr><td>5</td><td>Os 90 dias de maturação vieram de dado ou de convenção?</td><td>Janela de maturidade do dashboard e projeção de perda</td></tr>
+<tr><td>6</td><td>Existe feed de reversão (disputa ganha)?</td><td>Perda líquida e taxa de vitória em disputas</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+
+</div>
+
+<footer class="footer">
+  <div class="footer-brand">
+    <span class="brand-dot"></span>
+    <span class="brand-name">Case AE</span>
+    <span class="brand-divider">|</span>
+    <span class="brand-team">Anti-Fraud &amp; Risk</span>
+  </div>
+  <p>Case de Analytics Engineering · Prevenção a Fraudes · Lucas Dias · Outubro de 2026</p>
+  <p>Os números deste documento saem do protótipo <code>fraud-risk-analytics</code> rodando sobre os dados do enunciado.</p>
+  <p>Conceitos de pagamentos, chargeback e risco: <a href="guia-conceitos-fraude-e-risco.html">guia de conceitos</a>.</p>
+</footer>
+
+<div id="slide-hud" aria-live="polite">
+  <span class="hud-brand"><span class="brand-dot"></span>Case AE</span>
+  <button type="button" data-nav="-1" aria-label="Slide anterior">&larr;</button>
+  <div class="hud-progress"><span></span></div>
+  <button type="button" data-nav="1" aria-label="Próximo slide">&rarr;</button>
+  <span class="hud-count"></span>
+  <span class="hud-hint">← → navega · ↑ ↓ rola · Esc sai</span>
+  <button type="button" data-nav="exit">Documento</button>
+</div>
+
+<script>
+(function () {
+  var body = document.body;
+  var slides = [document.querySelector('.hero'), document.querySelector('.tldr')]
+    .concat(Array.prototype.slice.call(document.querySelectorAll('.container > section')))
+    .filter(Boolean);
+  var hud = document.getElementById('slide-hud');
+  var bar = hud.querySelector('.hud-progress span');
+  var count = hud.querySelector('.hud-count');
+  var current = 0;
+
+  slides.forEach(function (el) { el.classList.add('slide'); });
+
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+
+  function show(i) {
+    current = Math.max(0, Math.min(slides.length - 1, i));
+    slides.forEach(function (el, k) { el.classList.toggle('active', k === current); });
+    slides[current].scrollTop = 0;
+    bar.style.width = ((current + 1) / slides.length * 100) + '%';
+    count.textContent = pad(current + 1) + ' / ' + pad(slides.length);
+    try { history.replaceState(null, '', '#slide-' + (current + 1)); } catch (e) {}
+  }
+
+  function nearestSlide() {
+    var best = 0;
+    slides.forEach(function (el, k) { if (el.getBoundingClientRect().top <= 120) best = k; });
+    return best;
+  }
+
+  function enter(i) {
+    body.classList.add('presenting');
+    show(typeof i === 'number' ? i : nearestSlide());
+    if (document.documentElement.requestFullscreen) {
+      document.documentElement.requestFullscreen().catch(function () {});
+    }
+  }
+
+  function exit() {
+    var target = slides[current];
+    body.classList.remove('presenting');
+    slides.forEach(function (el) { el.classList.remove('active'); });
+    if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(function () {});
+    try { history.replaceState(null, '', target.id ? '#' + target.id : '#topo'); } catch (e) {}
+    target.scrollIntoView();
+  }
+
+  document.getElementById('present-btn').addEventListener('click', function (e) {
+    e.preventDefault();
+    enter(0);
+  });
+
+  hud.addEventListener('click', function (e) {
+    var nav = e.target.getAttribute('data-nav');
+    if (!nav) return;
+    if (nav === 'exit') exit(); else show(current + parseInt(nav, 10));
+  });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.target.closest && e.target.closest('input, textarea')) return;
+    var presenting = body.classList.contains('presenting');
+    if (!presenting) {
+      if (e.key === 'p' || e.key === 'P') enter();
+      return;
+    }
+    if (e.key === 'ArrowRight') { e.preventDefault(); show(current + 1); }
+    else if (e.key === 'ArrowLeft') { e.preventDefault(); show(current - 1); }
+    else if (e.key === 'Home') { e.preventDefault(); show(0); }
+    else if (e.key === 'End') { e.preventDefault(); show(slides.length - 1); }
+    else if (e.key === 'Escape' || e.key === 'p' || e.key === 'P') { exit(); }
+  });
+
+  // Esc no fullscreen é consumido pelo navegador: sair do fullscreen encerra a apresentação.
+  document.addEventListener('fullscreenchange', function () {
+    if (!document.fullscreenElement && body.classList.contains('presenting')) exit();
+  });
+
+  var m = /^#slide-(\d+)$/.exec(location.hash);
+  if (m) enter(parseInt(m[1], 10) - 1);
+})();
+</script>
+
+</body>
+</html>

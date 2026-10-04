@@ -1,0 +1,101 @@
+# Data Contract - Open Data Contract Standard (ODCS) v3
+# Produtor: time de Integrações com Adquirentes | Consumidor: Data & AE Anti-Fraud & Risk
+# Validado na ingestão (schema registry / validação de payload) e no CI (dbt source tests).
+apiVersion: v3.0.2
+kind: DataContract
+id: acquirer-chargebacks
+name: raw_chargebacks
+version: 2.0.0
+status: proposed
+domain: payments-risk
+dataProduct: anti-fraud-risk-mart
+
+description:
+  purpose: >
+    Notificações de chargeback recebidas das adquirentes. Label tardio do motor de fraude e base
+    da Perda Bruta. Chega D+N após a transação (até 120 dias, conforme bandeira e motivo).
+  limitations: >
+    Não representa ciclo de disputa completo na v1 (sem reversão). v2 adiciona dispute_stage e
+    currency, ver changelog.
+
+schema:
+  - name: raw_chargebacks
+    physicalType: table
+    properties:
+      - name: chargeback_id
+        logicalType: string
+        required: true
+        unique: true
+        primaryKey: true
+      - name: transaction_id
+        logicalType: string
+        required: true
+        description: FK para raw_transactions.transaction_id. Órfão gera alerta, não descarte.
+      - name: chargeback_at
+        logicalType: timestamp
+        required: true
+        description: ISO-8601 COM offset (ex. 2026-03-15T14:00:00-03:00). Sem offset = rejeitado.
+      - name: reason_code
+        logicalType: string
+        required: true
+        description: Código da bandeira SEM sufixo livre (ex. "10.4", "4837"). Bandeira em card_network.
+      - name: card_network
+        logicalType: string
+        required: true
+        description: "[v2] visa | mastercard | elo | amex | hipercard"
+      - name: cb_amount
+        logicalType: number
+        required: true
+        description: Valor contestado, > 0, na moeda de currency. Pode ser parcial.
+      - name: currency
+        logicalType: string
+        required: true
+        description: "[v2] ISO-4217. Hoje implícito BRL."
+      - name: dispute_stage
+        logicalType: string
+        required: true
+        description: >
+          [v2] first_chargeback | representment | pre_arbitration | arbitration | reversed.
+          Necessário para Perda Líquida (bruta - revertida).
+
+quality:
+  - rule: freshness
+    description: Feed sem novo evento por mais de 2 dias úteis = provável quebra de integração.
+    mustBeLessThan: 2
+    unit: business_days
+  - rule: rowCount
+    description: Volume diário fora de 3 desvios do baseline de 28 dias.
+    type: anomaly
+  - rule: referentialIntegrity
+    description: "% de chargebacks órfãos (sem transação) < 0,5%."
+    mustBeLessThan: 0.005
+
+slaProperties:
+  - property: latency
+    value: 1
+    unit: hour
+    description: Do recebimento da notificação até disponível no Bronze.
+  - property: retention
+    value: 5
+    unit: years
+  - property: frequency
+    value: 15
+    unit: minutes
+
+team:
+  - role: owner
+    name: Integrações com Adquirentes
+  - role: consumer
+    name: Data & Analytics Engineering - Anti-Fraud & Risk
+
+support:
+  - channel: "#data-risk-incidents"
+    tool: slack
+
+changelog:
+  - version: 1.0.0
+    description: Schema atual (chargeback_id, transaction_id, chargeback_at, reason_code, cb_amount).
+  - version: 2.0.0
+    description: >
+      BREAKING. Separa reason_code de card_network; timestamp com offset; adiciona currency e
+      dispute_stage. Período de convivência v1+v2 de 30 dias; consumidores migrados via staging.
