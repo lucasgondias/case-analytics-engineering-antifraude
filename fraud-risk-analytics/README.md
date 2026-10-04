@@ -20,7 +20,7 @@ python -m pytest spark/tests               # PySpark: paridade com o dbt (requer
 python spark/run_pipeline.py               # PySpark: carga + chargeback D+120 incremental
 ```
 
-Resultado esperado: `PASS=97 WARN=2 ERROR=0` (32 modelos, 58 testes de dado, 8 unit tests, 1 snapshot). Os 2 WARN são achados do case, não falhas do pipeline:
+Resultado esperado: `PASS=109 WARN=2 ERROR=0` (35 modelos, 67 testes de dado, 8 unit tests, 1 snapshot). Os 2 WARN são achados do case, não falhas do pipeline:
 
 | Teste | Linha pega | Significado |
 |---|---|---|

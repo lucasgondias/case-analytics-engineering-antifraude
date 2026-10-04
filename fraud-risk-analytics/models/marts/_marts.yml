@@ -38,6 +38,11 @@ models:
   - name: merchant_id
     data_type: varchar
     description: Lojista (contrato v2). Programas das bandeiras e perda não recuperada são medidos por lojista.
+    data_tests:
+    - relationships:
+        arguments:
+          to: ref('dim_merchant')
+          field: merchant_id
   - name: order_id
     data_type: varchar
     description: Pedido (contrato v2). Base da aprovação por intenção de compra (retentativas agrupadas).
@@ -51,6 +56,10 @@ models:
     description: Safra = data local da transação. Chargebacks são atribuídos aqui, nunca em chargeback_at.
     data_tests:
     - not_null
+    - relationships:
+        arguments:
+          to: ref('dim_date')
+          field: date_day
   - name: amount
     data_type: decimal(18,2)
   - name: currency
@@ -188,6 +197,12 @@ models:
     - not_null
   - name: is_orphan
     description: Chargeback sem transação conhecida (late-arriving ou falha de ingestão de transações).
+  - name: merchant_id
+    data_tests:
+    - relationships:
+        arguments:
+          to: ref('dim_merchant')
+          field: merchant_id
 - name: agg_chargeback_cohort_daily
   description: 'Safra x método. Só numeradores e denominadores aditivos e só o que é função do dado: idade e maturidade
     são calculadas na leitura (rpt_chargeback_cohort_maturity). Incremental por safra afetada.'
@@ -277,3 +292,30 @@ models:
     e perda esperada com a taxa histórica. Calculado na leitura (view).'
   group: anti_fraud_risk
   access: public
+- name: dim_merchant
+  description: Dimensão conformada de lojista. Em produção, snapshot SCD2.
+  group: anti_fraud_risk
+  access: public
+  columns:
+  - name: merchant_id
+    data_tests:
+    - unique
+    - not_null
+- name: dim_date
+  description: Dimensão de data conformada (safra, mês de notificação).
+  group: anti_fraud_risk
+  access: public
+  columns:
+  - name: date_day
+    data_tests:
+    - unique
+    - not_null
+- name: dim_risk_rule
+  description: Dimensão de regras do motor, uma linha por versão; is_shadow indica regra que só avalia.
+  group: anti_fraud_risk
+  access: public
+  columns:
+  - name: rule_key
+    data_tests:
+    - unique
+    - not_null

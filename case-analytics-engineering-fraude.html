@@ -341,7 +341,7 @@ body.presenting #slide-hud {
     <p class="subtitle">Arquitetura, modelagem, qualidade e governança para o time de Risco medir o <strong>motor de fraude</strong>, a <strong>perda por chargeback</strong> e o <strong>impacto das regras na aprovação</strong>, numa plataforma que processa pagamentos para milhares de lojistas.</p>
     <div class="meta">
       <span class="meta-pill primary">Protótipo executável: dbt + PySpark</span>
-      <span class="meta-pill">71 testes automatizados</span>
+      <span class="meta-pill">80 testes automatizados</span>
       <span class="meta-pill">2 achados reais no dado do case</span>
       <span class="meta-pill">Lucas Dias · outubro de 2026</span>
     </div>
@@ -368,7 +368,7 @@ body.presenting #slide-hud {
     <div class="tldr-stat"><div class="num red">7,3% → 30%</div><div class="lbl">CB rate do mesmo dado,<br>4 definições</div></div>
     <div class="tldr-stat"><div class="num red">1 de 4</div><div class="lbl">aprovadas sem<br>avaliação de risco</div></div>
     <div class="tldr-stat"><div class="num">D+4 x D+14</div><div class="lbl">rótulo do emissor x<br>chargeback (tx_1001)</div></div>
-    <div class="tldr-stat"><div class="num blue">32 · 71</div><div class="lbl">modelos dbt ·<br>testes automatizados</div></div>
+    <div class="tldr-stat"><div class="num blue">35 · 80</div><div class="lbl">modelos dbt ·<br>testes automatizados</div></div>
     <div class="tldr-stat"><div class="num blue">D+120</div><div class="lbl">chargeback tardio<br>na safra certa</div></div>
   </div>
 </div>
@@ -863,7 +863,7 @@ changed = (
 <span class="ok">PASS</span> int_fraud_labels__per_transaction::fraud_label_uses_earliest_evidence
 <span class="warn">WARN 1</span> assert_approved_transactions_have_risk_evaluation   <span class="dim">-- tx_1005</span>
 <span class="warn">WARN 1</span> assert_no_duplicate_payment_candidates              <span class="dim">-- tx_1005 duplicata de tx_1004</span>
-<span class="dim">Done.</span> <span class="ok">PASS=97</span> <span class="warn">WARN=2</span> ERROR=0   <span class="dim">(32 modelos, 58 testes de dado, 8 unit tests, 1 snapshot)</span>
+<span class="dim">Done.</span> <span class="ok">PASS=109</span> <span class="warn">WARN=2</span> ERROR=0   <span class="dim">(35 modelos, 67 testes de dado, 8 unit tests, 1 snapshot)</span>
 
 <span class="dim">$ pytest spark/tests</span>
 <span class="ok">5 passed</span>   <span class="dim">-- fato e agregado idênticos ao dbt; incremental com sobreposição e vizinhos</span></div>

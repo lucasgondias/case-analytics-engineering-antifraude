@@ -28,7 +28,7 @@ Requisitos: Python 3.10+ e, para a parte PySpark, Java 8+ no PATH.
 O script cria `.venv`, instala dependências, carrega os dados do case, roda `dbt build`, a simulação de
 chargeback tardio, o lint SQL e os testes PySpark. Resultado esperado:
 
-- `dbt build`: `PASS=97 WARN=2 ERROR=0`. Os 2 avisos são achados reais do dado: `tx_1005` aprovada sem
+- `dbt build`: `PASS=109 WARN=2 ERROR=0`. Os 2 avisos são achados reais do dado: `tx_1005` aprovada sem
   avaliação de risco e duplicata de `tx_1004`.
 - Simulação: chargeback de D+120 leva o CB rate da safra 01/03 (cartão) de 17,65% para 58,82%,
   reprocessando só essa safra.

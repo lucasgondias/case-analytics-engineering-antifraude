@@ -28,7 +28,7 @@ try {
     Remove-Item -Force -ErrorAction SilentlyContinue "fraud_risk.duckdb"
     & $dbt seed --quiet; Check "dbt seed"
 
-    Step "dbt build (modelos + testes de dado + unit tests). Esperado: PASS=97 WARN=2"
+    Step "dbt build (modelos + testes de dado + unit tests). Esperado: PASS=109 WARN=2"
     & $dbt build --exclude resource_type:seed; Check "dbt build"
 
     Step "Simulação: chargeback D+120 reabre só a safra afetada"
